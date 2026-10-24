@@ -1,0 +1,24 @@
+# Python / Jupyter
+.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Videos and raw app archives (videos are hosted externally)
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.zip
+
+# Location data must never be committed (public repo)
+**/Location*.csv
+
+# Office lock files
+~$*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
