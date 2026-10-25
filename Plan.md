@@ -17,7 +17,7 @@ The plan is split into **10 phases (0–9)**. Each phase ends with a **⏸ Verif
 |---|---|---|
 | 1 | Group vs individual | **Individual.** First person; one participant |
 | 2 | Dataset size | **52 single-activity clips (13 per activity)**, giving ≥50 files and ~130 s per activity. Plus 2 continuous training sessions so the model sees transitions |
-| 3 | Devices | **One Android phone.** Harmonise accelerometer vs gyroscope streams to 50 Hz. If the app allows it, record test session 2 at a different configured rate |
+| 3 | Devices | **One Android phone** (Infinix X6855, Android 36, Sensor Logger 1.68). Two real rates: test session 2 is recorded at the lower setting. Everything is harmonised to **25 Hz** (see row 15) |
 | 4 | Test data | **2 continuous multi-activity sessions**, recorded on a different day and in a different place |
 | 5 | Submission | `.docx` upload with the GitHub link on page 1; report copy also committed to the repo |
 | 6 | Results table | "Number of Samples" = **test windows**; per-row accuracy = one-vs-rest; an extra **Overall** row gives true accuracy |
@@ -28,6 +28,9 @@ The plan is split into **10 phases (0–9)**. Each phase ends with a **⏸ Verif
 | 11 | Page limit | 5 pages **including figures**, so a 4-figure budget |
 | 12 | Repo | Public. Videos hosted externally, not committed. No location or GPS data |
 | 13 | Commits | Incremental conventional commits; **no AI co-author or attribution trailers** |
+| 14 | Streams *(pilot, 25 Oct)* | **acc = `TotalAcceleration.csv`** (includes gravity, m/s²); **gyro = `Gyroscope.csv`** (rad/s). The app's `Accelerometer.csv` has gravity removed and is not used. Gravity axis: flat → **z ≈ 9.8**; waist grip → **y ≈ 9.7** (z ≈ 1.3), so still vs standing is separable |
+| 15 | Sampling rate *(pilot, 25 Oct)* | App setting 100 Hz → **delivers 58.4 Hz**; setting 50 Hz → **delivers 29.2 Hz**. Jitter σ ≤ 0.3 ms, no dropped samples; acc and gyro share **no** timestamps. Training data + test session 1 use the 100 Hz setting; test session 2 uses the 50 Hz setting. **Harmonise to 25 Hz**: anti-alias filter + downsampling, never upsampling |
+| 16 | Privacy | `device id` in every `Metadata.csv` is redacted with `scripts/redact_metadata.py` before any raw-data commit |
 
 ### A2. Rubric → Phase Map
 
@@ -49,6 +52,8 @@ hmm-elderly-activity-monitoring/
 ├── Plan.md
 ├── requirements.txt
 ├── .gitignore
+├── scripts/
+│   └── redact_metadata.py       # removes the device id from Metadata.csv files
 ├── data/
 │   ├── raw/                     # untouched Sensor Logger exports (unzipped CSVs)
 │   │   ├── pilot/
@@ -134,27 +139,26 @@ hmm-elderly-activity-monitoring/
 **Goal:** confirm the data format before recording 52 clips.
 
 **Tasks**
-- [ ] Install **Sensor Logger** (Android). Enable **Accelerometer, Gyroscope, Gravity** (and Total Acceleration if listed). **Turn off Location/GPS and all other sensors.**
-- [ ] Set the highest stable sampling rate and note the **configured** rate.
-- [ ] Record **10 s with the phone flat on a table**, export as CSV, unzip into `data/raw/pilot/`.
-- [ ] Start the notebook with **Section 1 "Setup & data loading"**: imports, path constants, `load_recording()`, measured-rate helper.
-- [ ] Inspect the pilot and answer these questions:
-  - Columns and timestamp format (expect `time` in ns plus `seconds_elapsed`).
-  - **Gravity in accelerometer?** Magnitude at rest ≈ 9.81 means included; ≈ 0 means removed, so use the Gravity stream for the orientation features.
-  - Measured rate per sensor (`1/median Δt`) and timestamp jitter.
-  - Can the app's sampling rate be changed? (This decides the different-rate demo in Phase 4.)
-- [ ] Write the answers into Plan.md A1 (new rows 14–15).
+- [x] Install **Sensor Logger** (Android). Enable **Accelerometer, Gyroscope, Gravity** (and Total Acceleration if listed). **Turn off Location/GPS and all other sensors.**
+- [x] Set the sampling rate to 100 Hz and note the **configured** rate.
+- [x] Record 4 pilots (flat, upright grip, walk, flat at the 50 Hz setting), export as CSV, unzip into `data/raw/pilot/`.
+- [x] Redact the device id (`scripts/redact_metadata.py`).
+- [x] Start the notebook with **Section 1 "Setup & data loading"**: imports, path constants, `load_recording()`, measured-rate helper, pilot check.
+- [x] Inspect the pilots: timestamp format, gravity, gravity axis per orientation, measured rates and jitter, rate adjustability.
+- [x] Write the answers into Plan.md A1 (rows 14–16).
 
 **Commits**
-1. `data: add pilot recording`
-2. `feat(notebook): add setup and sensor loading utilities`
-3. `docs: record pilot findings in plan`
+1. `chore: add metadata redaction script`
+2. `data: add pilot recordings`
+3. `feat(notebook): add setup and sensor loading utilities`
+4. `docs: record pilot findings in plan and README`
 
 **⏸ Checkpoint 1**
-- [ ] The pilot loads with no errors; units are m/s² and rad/s.
-- [ ] Gravity question answered; feature 1–3 source decided (accelerometer or Gravity stream).
-- [ ] Measured rates noted; sampling-rate adjustability known.
-- [ ] No location columns or files in the export.
+- [ ] The pilots load with no errors; units are m/s² and rad/s.
+- [ ] Gravity question answered; feature 1–3 source decided (`TotalAcceleration` axis means).
+- [ ] Measured rates noted; sampling-rate adjustability known (100 Hz → 58.4 Hz; 50 Hz → 29.2 Hz).
+- [ ] No location files, and no device id in any committed `Metadata.csv`.
+- [ ] **App set back to the 100 Hz setting** for Phase 2.
 
 ---
 
@@ -185,7 +189,8 @@ hmm-elderly-activity-monitoring/
   - Start with **3 sharp taps** on the phone (sync marker).
   - Follow a **laptop interval timer** with audio cues, and film with the webcam to get exact boundaries.
   - Write the segment table (`start_s, end_s, activity`) right after each session.
-- [ ] Unzip every export into the `data/raw/...` layout from A3.
+- [ ] Check that the app is on the **100 Hz setting** (delivers 58.4 Hz) before every sitting.
+- [ ] Unzip every export into the `data/raw/...` layout from A3, then run `python scripts/redact_metadata.py data/raw` before committing.
 - [ ] Fill in `data/metadata.csv` for every recording.
 - [ ] Upload the videos to **YouTube (unlisted)** or **Google Drive (Anyone with link → Viewer)**. Keep the links in a private note for the report; they are not committed.
 
@@ -212,10 +217,10 @@ hmm-elderly-activity-monitoring/
 **Tasks** (notebook Section 2 "Pre-processing")
 - [ ] **Quality checks:** measured rate per sensor and file; flag gaps (Δt > 3 × median); drop duplicate timestamps.
 - [ ] **Harmonisation:**
-  - Android sensors are event-driven, so the accelerometer and gyroscope run at different, jittery rates on separate timestamps.
-  - Build a **uniform 50 Hz grid** over the time range both sensors cover, and linearly interpolate all axes onto it (`np.interp`).
-  - When the source rate is above 50 Hz, apply an anti-alias Butterworth low-pass filter (~20 Hz) first.
-  - Why 50 Hz: human motion energy lies mostly below ~20 Hz, and the Nyquist frequency is 25 Hz. Every recording can reach this rate, and window sizes in samples become identical.
+  - Why it's needed (from the pilot): recordings exist at **two real rates** (58.4 Hz and 29.2 Hz, from the 100 and 50 Hz settings), and accelerometer and gyroscope samples are taken at **different instants** (no shared timestamps).
+  - Step 1: an **anti-alias low-pass filter** at each stream's native rate: zero-phase Butterworth (`scipy.signal.butter` + `filtfilt`), order 4, **cutoff 10 Hz** (below the new 12.5 Hz Nyquist).
+  - Step 2: build a **uniform 25 Hz grid** over the time range both sensors cover, and linearly interpolate all six axes onto it (`np.interp`).
+  - Why 25 Hz: it is just below the lowest delivered rate (29.2 Hz), so every recording is **downsampled and nothing is upsampled**. Interpolating up would invent no content above the source Nyquist, and test FFT features would no longer match training. The 12.5 Hz Nyquist still covers the walking and jumping fundamentals (~1.5–2.5 Hz) and their main harmonics. Window sizes in samples become identical for all recordings.
 - [ ] **Cleaning:** trim 1 s from each end of each clip; assert the cleaned length is 5–10 s; flag bad clips and re-record them.
 - [ ] **Labelling:** add the `activity` column. Sessions get per-row labels expanded from their segment tables. Refine boundaries using the sync taps and the |a| plot.
 - [ ] Save to `data/processed/train/...` using the A3 schema.
@@ -226,13 +231,13 @@ hmm-elderly-activity-monitoring/
 
 **Commits**
 1. `feat(notebook): add sampling quality checks`
-2. `feat(notebook): add 50 Hz resampling with anti-alias filter`
+2. `feat(notebook): add 25 Hz resampling with anti-alias filter`
 3. `feat(notebook): add clip trimming and session labelling`
 4. `data: add processed training clips and sessions`
 5. `feat(notebook): add raw signal and sampling visualisations`
 
 **⏸ Checkpoint 3**
-- [ ] 52 processed clips, each 5–10 s, with no NaNs and Δt = 0.02 s throughout.
+- [ ] 52 processed clips, each 5–10 s, with no NaNs and Δt = 0.04 s (25 Hz) throughout.
 - [ ] Every activity totals ≥90 s (bar chart).
 - [ ] Session labels line up with the visible signal changes.
 - [ ] Fig. 1 is readable at report size and saved to `figures/`.
@@ -253,7 +258,8 @@ hmm-elderly-activity-monitoring/
 **Tasks**
 - [ ] 2 sessions, **~100 s each, all 4 activities at ~25 s each**. Use activity orders that differ from the training sessions and from each other.
 - [ ] Same protocol as the training sessions: sync taps, timer schedule, webcam footage, segment table.
-- [ ] If the pilot showed the rate can be changed, record **test session 2 at a different configured rate** (e.g. half the training rate) to demonstrate harmonisation.
+- [ ] Record **test session 2 with the app on the 50 Hz setting** (delivers 29.2 Hz), so harmonisation is demonstrated on a genuinely different rate. **Set it back to 100 Hz afterwards.**
+- [ ] Run `python scripts/redact_metadata.py data/raw/test` before committing.
 - [ ] Process both with the **unchanged** Phase 3 pipeline. Save them to `data/processed/test/` and update `metadata.csv`.
 
 **Commits**
@@ -271,7 +277,7 @@ hmm-elderly-activity-monitoring/
 ## Phase 5 — Windowing, Feature Extraction & Normalisation
 **Goal:** a Z-scored feature matrix for training and test.
 
-**Windowing:** **2.0 s = 100 samples at 50 Hz, hop 1.0 s.** The window is defined in seconds and converted with `fs × seconds`.
+**Windowing:** **2.0 s = 50 samples at 25 Hz, hop 1.0 s.** The window is defined in seconds and converted with `fs × seconds`.
 - Walking runs at ~1.6–2 steps/s and jumping at ~1.5–2.5 jumps/s, so a window covers ≥3 cycles.
 - FFT resolution 1/T = 0.5 Hz.
 - Expect ~175 training windows per activity.
@@ -290,7 +296,7 @@ hmm-elderly-activity-monitoring/
 | 10 | Corr(acc_y, acc_z) | Time | Coordinated movement vs uncorrelated noise |
 | 11 | Dominant frequency of \|a\| (FFT) | Freq | Step or jump rate; no clear peak when still or standing |
 | 12 | Spectral energy of \|a\| | Freq | Periodic high-energy motion vs near-silence |
-| 13 | Band-energy ratio (0.5–3 / 3–15 Hz) | Freq | Gait energy is low-band; impacts and noise are high-band |
+| 13 | Band-energy ratio (0.5–3 / 3–10 Hz) | Freq | Gait energy is low-band; impacts and noise are high-band (upper band capped by the 10 Hz anti-alias cutoff) |
 | 14 | Spectral entropy | Freq | Periodic motion has low entropy; noise has high entropy |
 
 FFT details: remove the mean, apply a Hann window, use `np.fft.rfft`, and skip the DC bin when finding the peak.
@@ -454,7 +460,7 @@ class GaussianHMM:
 **Discussion points**
 - **Hardest pair:** likely still vs standing (orientation features separate them). **Easiest:** jumping (very large energy and peak-to-peak values).
 - **Transitions:** a strong diagonal shows that activities persist. Still ↔ standing is the gateway (you pick the phone up or put it down while standing); still → jumping should be near zero. In the use case, impact → long still would be an alert pattern.
-- **Noise and sampling:** Android timing jitter, gyroscope drift, interpolation, aliasing, why 50 Hz is enough.
+- **Noise and sampling:** the delivered rate differed from the configured rate (58.4 vs 100 Hz); acc and gyro are sampled at different instants; gyroscope drift; interpolation; aliasing; why 25 Hz is enough and what is lost above 12.5 Hz (sharpness of impacts); whether test session 2 (29.2 Hz) performed worse.
 - **Improvements:** more participants and devices; pocket or belt placement (more realistic for older adults); barometer for fall detection; GMM emissions; a duration-aware HSMM.
 
 **Tasks**

@@ -5,9 +5,10 @@ Human activity recognition from smartphone accelerometer and gyroscope data, usi
 ## Repository Structure
 
 ```
+scripts/        redact_metadata.py (removes the app's device id before data is committed)
 data/
-  raw/          Untouched Sensor Logger exports (pilot, clips, sessions, test)
-  processed/    Cleaned, 50 Hz resampled, labelled CSVs (train/clips, train/sessions, test)
+  raw/          Sensor Logger exports (pilot, clips, sessions, test); only the device id is redacted
+  processed/    Cleaned, 25 Hz resampled, labelled CSVs (train/clips, train/sessions, test)
   labels/       Segment tables for continuous sessions
   metadata.csv  One row per recording (activity, sampling rates, duration, date)
 notebooks/      hmm_activity_recognition.ipynb
