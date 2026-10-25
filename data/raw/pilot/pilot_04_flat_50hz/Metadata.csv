@@ -1,0 +1,2 @@
+version,device name,recording epoch time,recording time,recording timezone,platform,appVersion,device id,sensors,sampleRateMs,standardisation,platform version
+3,Infinix X6855,1792885939219,2026-10-24_23-52-19,Africa/Kigali,android,1.68,redacted,Accelerometer|Gravity|Gyroscope|Annotation|TotalAcceleration|GyroscopeUncalibrated|AccelerometerUncalibrated,20|20|20||20|20|20,false,36
