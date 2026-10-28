@@ -1,0 +1,10 @@
+start_s,end_s,activity
+0.0,15.0,still
+15.0,20.0,standing
+20.0,50.0,walking
+50.0,68.0,standing
+68.0,78.0,jumping
+78.0,86.0,standing
+86.0,113.0,walking
+113.0,120.0,standing
+120.0,138.0,still
