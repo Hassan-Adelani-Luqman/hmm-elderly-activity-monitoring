@@ -1,0 +1,27 @@
+{
+  "ready": true,
+  "retained_features": 10,
+  "feature_order": [
+    "mean_acc_x",
+    "mean_acc_y",
+    "std_acc_mag",
+    "var_gyro_mag",
+    "sma_acc",
+    "sma_gyro",
+    "corr_acc_yz",
+    "dominant_freq_acc",
+    "band_energy_ratio_acc",
+    "spectral_entropy_acc"
+  ],
+  "sequences": {
+    "train": 44,
+    "test": 8,
+    "unlabelled": 4
+  },
+  "windows": {
+    "train": 338,
+    "test": 65,
+    "unlabelled": 137
+  },
+  "fit_policy": "Feature selection and z-score fitted on the 44 labelled training clips only"
+}

@@ -1,0 +1,15 @@
+feature,retained,reason,paired_feature,correlation
+mean_acc_x,True,retained,,
+mean_acc_y,True,retained,,
+mean_acc_z,False,training correlation exceeds limit,mean_acc_y,-0.9831588935744406
+std_acc_mag,True,retained,,
+var_gyro_mag,True,retained,,
+rms_centered_acc_mag,False,training correlation exceeds limit,std_acc_mag,1.0
+sma_acc,True,retained,,
+sma_gyro,True,retained,,
+ptp_acc_mag,False,training correlation exceeds limit,std_acc_mag,0.9974310442629895
+corr_acc_yz,True,retained,,
+dominant_freq_acc,True,retained,,
+spectral_energy_acc,False,training correlation exceeds limit,std_acc_mag,0.987523374289514
+band_energy_ratio_acc,True,retained,,
+spectral_entropy_acc,True,retained,,

@@ -15,6 +15,7 @@ The plan is split into **10 phases (0–9)**. Each phase ends with a **⏸ Verif
 - **Phase 2:** 52 clips and two incomplete session exports exist. All four links are received in the Git-ignored `videos.txt`. Unauthenticated YouTube metadata and previews are accessible (14–45 s total duration). Preview review found full-body framing issues in all four videos and absent face framing during the still demonstration; compliance remains open.
 - **Phase 3:** corrected preprocessing, all-clip validation, metadata, figures and quality reports. The 52 clips retain 5–10 s each and ≥90 s per activity. Session gaps are never interpolated across.
 - **Phase 4 complete under revised design:** a frozen whole-recording split assigns 44 clips to training and 8 to testing (11/2 per activity; seed 42). All 52 remain collected data. The test clips were previously quality-inspected but have never been used for learned feature/model fitting. They assess same-collection single-activity recognition, not a new day/place or continuous cross-activity transitions. See `data/split_manifest.csv` and `docs/phase4_test_data.md`.
+- **Phase 5 complete:** 50-sample windows with a 25-sample hop yield 338 labelled training, 65 held-out test and 137 optional unlabelled windows. Training-only correlation screening retains 10 features (7 time-domain, 3 FFT); z-score selection/statistics use only the 44 labelled training clips. Provenance, plots and analytical checks are saved. See `docs/phase5_features.md`.
 - **No-re-recording decision:** the participant has no session footage or precise timer records; the approximate 15 s schedule does not verify activity boundaries. Keep original labels only as provisional diagnostic annotations. Recover four independent **unlabelled** session blocks, with original timestamps and recorded orientation. Use the 44 labelled training clips for supervised initialisation and an explicit transition prior; optionally refine with Baum–Welch on unlabelled blocks later. Two labelled training sessions were a design choice and are no longer a completion requirement. Eight whole-recording held-out test clips now supply the evaluation partition.
 - **Remaining phase 1–3 evidence:** resolve the video framing findings, verify active phone logging and the matching recordings, and perform a final signed-out playback check. See `docs/video_review.md`. See `docs/collection_completion.md` and `docs/video_checklist.csv`.
 - Generated evidence: `data/quality/status.json`, `sampling.csv`, `gaps.csv`, `clip_intervals.csv`, `unlabelled_sequences.csv`, and the executed notebook. `training_ready` and `test_ready` certify the valid collection and fixed 44/8 partition only; it does not certify videos or session ground truth.
@@ -305,7 +306,7 @@ remains open independently. See `docs/phase4_test_data.md`.
 - Compute actual training/test window counts from the frozen split; keep each recording as a separate sequence.
 - A window takes the majority label of its samples.
 
-**Features (~12–14 per window):**
+**Candidate features (14 computed; final retained set has 10):**
 
 | # | Feature | Domain | Why it helps |
 |---|---|---|---|
@@ -321,20 +322,20 @@ remains open independently. See `docs/phase4_test_data.md`.
 | 13 | Band-energy ratio (0.5–3 / 3–10 Hz) | Freq | Gait energy is low-band; impacts and noise are high-band (upper band capped by the 10 Hz anti-alias cutoff) |
 | 14 | Spectral entropy | Freq | Periodic motion has low entropy; noise has high entropy |
 
-FFT details: remove the mean, apply a Hann window, use `np.fft.rfft`, and skip the DC bin when finding the peak.
+FFT details: remove the mean, apply a periodic Hann window, use `np.fft.rfft`, and skip DC for the peak/entropy. One-sided power doubles only interior positive bins and divides by N × sum(Hann²). Energy includes all bins; entropy is normalised. Bands are disjoint [0.5,3] and (3,10] Hz; fixed 1e-12 floors handle zero energy safely.
 
 **Normalisation: Z-score, fitted on training windows only**, then applied to the test windows. Reasons:
 - The features have mixed units and scales.
-- Diagonal Gaussian emissions would otherwise be dominated by large-scale features.
+- Numerical conditioning and the later variance floor become comparable across features. Freely rescaled Gaussian parameters are not inherently dominated by large feature units.
 - Min-max scaling is distorted by jump spikes.
 - Fitting on train only avoids leakage.
 
-**Tasks** (notebook Section 3 "Features")
-- [ ] `window_signal()` with majority labels.
-- [ ] Time-domain features (1–10).
-- [ ] FFT features (11–14).
-- [ ] `zscore_fit()` / `zscore_transform()`.
-- [ ] Training-only per-class box plots and a feature-correlation heatmap; drop any feature with |r| > 0.95 against another (keep D ≤ ~14).
+**Tasks** (notebook Section 4 "Phase 5")
+- [x] `window_signal()` with majority labels.
+- [x] Time-domain features (1–10).
+- [x] FFT features (11–14).
+- [x] `zscore_fit()` / `zscore_transform()`.
+- [x] Training-only per-class box plots and a feature-correlation heatmap; drop any feature with |r| > 0.95 against another (keep D ≤ ~14).
 
 **Commits**
 1. `feat(notebook): add sliding-window segmentation`
@@ -344,12 +345,21 @@ FFT details: remove the mean, apply a Hann window, use `np.fft.rfft`, and skip t
 5. `feat(notebook): add feature distribution and correlation plots`
 
 **⏸ Checkpoint 5**
-- [ ] The feature matrix has no NaN or inf values. Training features have mean ≈ 0 and std ≈ 1; test features are transformed with the **training** statistics.
-- [ ] The box plots show the expected ordering (e.g. std|a|: still < standing < walking < jumping).
-- [ ] Still vs standing is separable on at least one orientation feature.
-- [ ] The final feature list is recorded in the notebook with one-line justifications.
+- [x] The feature matrix has no NaN or inf values. Retained training features have mean ≈ 0 and population std ≈ 1; test features are transformed with the **training** statistics.
+- [x] The box plots show the expected ordering (e.g. std|a|: still < standing < walking < jumping).
+- [x] Still vs standing is separable on at least one orientation feature.
+- [x] The final feature list is recorded in the notebook with one-line justifications.
 
 ---
+
+**Observed result (training only):** final columns are mean_acc_x, mean_acc_y,
+std_acc_mag, var_gyro_mag, sma_acc, sma_gyro, corr_acc_yz, dominant_freq_acc,
+band_energy_ratio_acc and spectral_entropy_acc. Removed mean_acc_z, centred RMS,
+acceleration range and spectral energy at |r| >0.95 against retained features.
+Median std(|a|) increases from 0.0035 (still) to 0.0903 (standing), 0.7444
+(walking), and 9.9793 m/s² (jumping). The y-axis mean distinguishes the collection's
+flat/upright phone positions. Test/optional unlabelled data did not affect the
+feature choice or fitted scaling. No HMM fitting or test scoring has occurred.
 
 ## Phase 6 — HMM Implementation & Verification
 **Goal:** a correct, from-scratch numpy `GaussianHMM`, with verification shown in the notebook.
@@ -364,7 +374,7 @@ FFT details: remove the mean, apply a Hann window, use `np.fft.rfft`, and skip t
 | **B** | Diagonal Gaussian per state, 𝒩(x; μ_j, diag σ²_j), variance floor 1e-3 |
 | **π** | π_i = P(z_1 = i) |
 
-- **Why diagonal:** with ~175 windows per state, a full covariance (~100 parameters per state) would be poorly estimated. The variance floor stops the still state's variances from collapsing to zero.
+- **Why diagonal:** the labelled training set has 71–99 windows per state and D=10 retained features; the 55 unique full-covariance entries per state would be poorly estimated, especially with overlapping windows. The variance floor stops the still state's variances from collapsing to zero.
 - **Algorithms** (brief in the report, tied to the metrics):
   - **Forward** gives P(X | λ), the convergence criterion.
   - **Baum–Welch** (EM via forward–backward) learns λ.
