@@ -1,13 +1,13 @@
 # HMM Elderly Activity Monitoring
 
-Human activity recognition from smartphone accelerometer and gyroscope data, with a planned Hidden Markov Model implemented from scratch in NumPy. The use case is elderly fall-risk and inactivity monitoring. The four activities are **still, standing, walking, jumping**. Phases 1–5 (collection inspection, preprocessing, a fixed split, windowing, feature extraction and training-only normalisation) are implemented. Baum–Welch, Viterbi and final evaluation remain later phases. Jumping is an impact activity, not validated fall data.
+Human activity recognition from smartphone accelerometer and gyroscope data, with a Hidden Markov Model implemented from scratch in NumPy. The use case is elderly fall-risk and inactivity monitoring. The four activities are **still, standing, walking, jumping**. Phases 1–6 are implemented: collection inspection, preprocessing, a fixed split, features, training-only normalisation, and an HMM verified on exact and synthetic examples. Activity-model training and held-out evaluation remain Phase 7. Jumping is an impact activity, not validated fall data.
 
 The revised collection uses 52 labelled clips (13 per activity), partitioned into **44 training and 8 test clips** (11/2 per activity), plus independent **unlabelled** blocks recovered from incomplete sessions. Approximate session labels are retained only for diagnostics. All four video links have been received and their metadata/previews are accessible without login. Preview inspection found full-body framing issues; video compliance remains open. See [video review](docs/video_review.md). See [collection status and remaining evidence](docs/collection_completion.md).
 
 ## Repository Structure
 
 ```
-scripts/        preprocessing.py; splits.py; features.py; redact_metadata.py
+scripts/        preprocessing.py; splits.py; features.py; hmm.py; verify_hmm.py; redact_metadata.py
 data/
   raw/          Sensor Logger exports (pilot, clips, sessions, test); only the device id is redacted
   processed/    44 train/clips, 8 test clips; optional unlabelled/sessions
@@ -17,6 +17,7 @@ data/
   split_manifest.csv  Frozen train/test membership and source hashes (seed 42)
   quality/      Sampling, gaps, crop/sequence manifests and current readiness
   features/     Normalised per-sequence features, training fit parameters and audit tables
+  verification/ Synthetic HMM verification, source hashes and likelihood histories
 notebooks/      hmm_activity_recognition.ipynb
 figures/        Figures exported from the notebook
 report/         Final report (.docx and .pdf)
@@ -40,6 +41,7 @@ To regenerate processed files and run the checks without Jupyter:
 ```bash
 python scripts/preprocessing.py --require-complete
 python scripts/features.py
+python scripts/verify_hmm.py
 python -m unittest discover -s tests -v
 ```
 
@@ -56,6 +58,12 @@ For subsequent features/models, load `load_labelled_sequences(ROOT, "train")` or
 Phase 5 uses 2 s windows with a 1 s hop. Training-only screening retains **10 features** (7 time-domain, 3 FFT). Population z-score statistics are fitted on the **338 windows from 44 labelled training clips** and applied unchanged to the **65 test windows** and **137 optional unlabelled windows**.
 
 Use `load_feature_sequences(ROOT, "train")`, `"test"`, or `"unlabelled"` from `scripts.features` for model-ready `X` matrices, labels and window metadata. Each recording remains a separate sequence. Feature order and fitted statistics are stored in `data/features/transform.json`. See [Phase 5 definitions, checks and limitations](docs/phase5_features.md).
+
+## HMM verification
+
+`GaussianHMM` in `scripts/hmm.py` implements Gaussian emissions, scaled log-space forward/backward, Viterbi, supervised initialisation and multi-sequence Baum–Welch. The notebook displays the implementation and mathematical verification in Sections 5–6.
+
+All six Phase 6 checks pass using exact enumeration and generated synthetic sequences. The recovery example converges in 7 EM iterations on the log-likelihood tolerance, with maximum transition/mean errors of 0.01421/0.03212. No activity HMM has been fitted or evaluated. See [Phase 6 methods and verification](docs/phase6_hmm.md) and `data/verification/hmm.json`.
 
 ## Report
 

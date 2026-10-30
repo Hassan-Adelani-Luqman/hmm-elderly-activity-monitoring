@@ -3,7 +3,7 @@
 import unittest
 import numpy as np
 from scripts.hmm import GaussianHMM, logsumexp
-from scripts.verify_hmm import exact_verification
+from scripts.verify_hmm import exact_verification, synthetic_verification
 
 
 def toy_model():
@@ -91,6 +91,12 @@ class SupervisedTests(unittest.TestCase):
 
 
 class EMTests(unittest.TestCase):
+    def test_seeded_random_start_recovers_synthetic_parameters(self):
+        result = synthetic_verification()
+        self.assertTrue(result['converged'])
+        self.assertLess(result['maximum_A_error'], result['A_error_tolerance'])
+        self.assertLess(result['maximum_mean_error'], result['mean_error_tolerance'])
+
     def test_em_monotonicity_convergence_and_all_step_invariants(self):
         rng = np.random.default_rng(81)
         X = [np.r_[rng.normal(-2, .3, (50, 1)), rng.normal(2, .4, (50, 1))] for _ in range(3)]

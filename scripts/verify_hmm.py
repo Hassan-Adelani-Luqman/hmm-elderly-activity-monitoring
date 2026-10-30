@@ -1,6 +1,9 @@
 """Independent exact and synthetic HMM verification; never load activity data."""
 
-from itertools import product
+from itertools import product, permutations
+from pathlib import Path
+import argparse
+import hashlib
 import json
 import numpy as np
 
@@ -79,5 +82,98 @@ def exact_verification():
             "exact_em_step_passed": True}
 
 
+def sample_sequences(pi, A, means, variances, lengths, seed):
+    """Sample independent Gaussian HMM X_s(T_s,D) arrays and hidden z_s(T_s,)."""
+    rng = np.random.default_rng(seed)
+    observations, states = [], []
+    for length in lengths:
+        z = np.empty(length, dtype=np.int64)
+        X = np.empty((length, means.shape[1]))
+        z[0] = rng.choice(len(pi), p=pi)
+        for t in range(length):
+            if t:
+                z[t] = rng.choice(len(pi), p=A[z[t-1]])
+            X[t] = rng.normal(means[z[t]], np.sqrt(variances[z[t]]))
+        observations.append(X)
+        states.append(z)
+    return observations, states
+
+
+def synthetic_verification():
+    """Recover a known 3-state/2-feature HMM from one seeded random initialisation.
+
+    Seeds, sample lengths and recovery tolerances are fixed. Hidden labels are
+    not supplied to the fit. All 3! state permutations are considered only after
+    training, to compare estimated parameters with their known synthetic truth.
+    """
+    pi = np.array([.5, .3, .2])
+    A = np.array([[.91, .06, .03], [.04, .90, .06], [.05, .05, .90]])
+    means = np.array([[-4., -2.], [0., 3.], [4., -1.]])
+    variances = np.array([[.35, .5], [.45, .3], [.4, .6]])
+    data_seed, initial_seed = 2026, 7
+    lengths = [250]*12
+    X_list, _ = sample_sequences(pi, A, means, variances, lengths, data_seed)
+    pooled = np.concatenate(X_list)  # Initial emission scale only; never an HMM sequence.
+    rng = np.random.default_rng(initial_seed)
+    model = GaussianHMM(3, 2).set_parameters(
+        rng.dirichlet(np.ones(3)), rng.dirichlet(np.ones(3), size=3),
+        rng.uniform(pooled.min(axis=0), pooled.max(axis=0), size=(3, 2)),
+        np.tile(pooled.var(axis=0), (3, 1)))
+    initial_means = model.means.copy()
+    model.fit_baum_welch(X_list)
+    permutation = np.array(min(permutations(range(3)), key=lambda p: np.sum((model.means[list(p)]-means)**2)))
+    matched_A = model.A[np.ix_(permutation, permutation)]
+    matched_means = model.means[permutation]
+    A_error = float(np.max(abs(matched_A-A)))
+    means_error = float(np.max(abs(matched_means-means)))
+    increments = np.diff(model.history_)
+    assert model.converged_ and model.stop_reason_ == 'likelihood_tolerance'
+    assert model.n_iter_ < model.max_iter
+    assert (increments >= 0).all()
+    assert abs(increments[-1]) < model.tol
+    assert A_error < .06, f'Transition recovery error {A_error}'
+    assert means_error < .15, f'Mean recovery error {means_error}'
+    assert len(model.invariant_history_) == model.n_iter_
+    for row in model.invariant_history_:
+        assert row['pi_sum_error'] <= 1e-12
+        assert row['A_row_sum_error'] <= 1e-12
+        assert row['minimum_variance'] >= model.var_floor
+    return {'data_seed': data_seed, 'initial_seed': initial_seed, 'sequence_lengths': lengths,
+            'random_starts': 1, 'truth': {'pi': pi.tolist(), 'A': A.tolist(),
+                                         'means': means.tolist(), 'variances': variances.tolist()},
+            'initial_means': initial_means.tolist(), 'matched_state_indices': permutation.tolist(),
+            'matched_A': matched_A.tolist(), 'matched_means': matched_means.tolist(),
+            'matched_variances': model.variances[permutation].tolist(),
+            'maximum_A_error': A_error, 'A_error_tolerance': .06,
+            'maximum_mean_error': means_error, 'mean_error_tolerance': .15,
+            'converged': model.converged_, 'stop_reason': model.stop_reason_,
+            'iterations': model.n_iter_, 'iteration_cap': model.max_iter, 'tol': model.tol,
+            'history': model.history_, 'invariant_history': model.invariant_history_,
+            'final_improvement': float(increments[-1]), 'minimum_improvement': float(increments.min())}
+
+
+def run_verification(output_path=None):
+    """Run exact and synthetic assertions; optionally save JSON evidence at path."""
+    result = {'passed': True, 'scope': 'Synthetic data only; no activity model fitted or scored',
+              'numpy_version': np.__version__,
+              'source_sha256': {name: hashlib.sha256(Path(__file__).with_name(name).read_bytes()).hexdigest()
+                                for name in ['hmm.py', 'verify_hmm.py']},
+              'exact': exact_verification(), 'synthetic': synthetic_verification()}
+    if output_path is not None:
+        path = Path(output_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(result, indent=2, allow_nan=False)+'\n')
+    return result
+
+
 if __name__ == '__main__':
-    print(json.dumps(exact_verification(), indent=2))
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--output', type=Path, default=Path(__file__).resolve().parents[1]/'data/verification/hmm.json')
+    args = parser.parse_args()
+    result = run_verification(args.output)
+    synthetic = result['synthetic']
+    print(json.dumps({'passed': result['passed'], 'iterations': synthetic['iterations'],
+                      'final_improvement': synthetic['final_improvement'],
+                      'maximum_A_error': synthetic['maximum_A_error'],
+                      'maximum_mean_error': synthetic['maximum_mean_error'],
+                      'evidence': str(args.output)}, indent=2))

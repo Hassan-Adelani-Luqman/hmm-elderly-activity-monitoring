@@ -16,6 +16,7 @@ The plan is split into **10 phases (0–9)**. Each phase ends with a **⏸ Verif
 - **Phase 3:** corrected preprocessing, all-clip validation, metadata, figures and quality reports. The 52 clips retain 5–10 s each and ≥90 s per activity. Session gaps are never interpolated across.
 - **Phase 4 complete under revised design:** a frozen whole-recording split assigns 44 clips to training and 8 to testing (11/2 per activity; seed 42). All 52 remain collected data. The test clips were previously quality-inspected but have never been used for learned feature/model fitting. They assess same-collection single-activity recognition, not a new day/place or continuous cross-activity transitions. See `data/split_manifest.csv` and `docs/phase4_test_data.md`.
 - **Phase 5 complete:** 50-sample windows with a 25-sample hop yield 338 labelled training, 65 held-out test and 137 optional unlabelled windows. Training-only correlation screening retains 10 features (7 time-domain, 3 FFT); z-score selection/statistics use only the 44 labelled training clips. Provenance, plots and analytical checks are saved. See `docs/phase5_features.md`.
+- **Phase 6 complete:** from-scratch NumPy Gaussian HMM with scaled log-space forward/backward, Viterbi, supervised initialisation and multi-sequence Baum–Welch. Exact 64-path checks and synthetic recovery pass; the synthetic run converges in 7 iterations on the likelihood tolerance. No activity HMM fitted or evaluated. See `docs/phase6_hmm.md` and `data/verification/hmm.json`.
 - **No-re-recording decision:** the participant has no session footage or precise timer records; the approximate 15 s schedule does not verify activity boundaries. Keep original labels only as provisional diagnostic annotations. Recover four independent **unlabelled** session blocks, with original timestamps and recorded orientation. Use the 44 labelled training clips for supervised initialisation and an explicit transition prior; optionally refine with Baum–Welch on unlabelled blocks later. Two labelled training sessions were a design choice and are no longer a completion requirement. Eight whole-recording held-out test clips now supply the evaluation partition.
 - **Remaining phase 1–3 evidence:** resolve the video framing findings, verify active phone logging and the matching recordings, and perform a final signed-out playback check. See `docs/video_review.md`. See `docs/collection_completion.md` and `docs/video_checklist.csv`.
 - Generated evidence: `data/quality/status.json`, `sampling.csv`, `gaps.csv`, `clip_intervals.csv`, `unlabelled_sequences.csv`, and the executed notebook. `training_ready` and `test_ready` certify the valid collection and fixed 44/8 partition only; it does not certify videos or session ground truth.
@@ -385,10 +386,10 @@ feature choice or fitted scaling. No HMM fitting or test scoring has occurred.
 class GaussianHMM:
     """Diagonal-covariance Gaussian HMM implemented from scratch in numpy."""
     def __init__(self, n_states, n_features, var_floor=1e-3, tol=1e-4, max_iter=500): ...
-    def fit_supervised(self, X_list, y_list): ...   # counts + Laplace smoothing
+    def fit_supervised(self, X_list, y_list, transition_prior=1.0, initial_prior=1.0): ...   # counts + Laplace smoothing
     def _log_emission(self, X): ...                 # (T, N)
-    def _forward(self, log_B): ...                  # scaled alphas, scales, log-likelihood
-    def _backward(self, log_B, scales): ...
+    def _forward(self, log_B): ...                  # normalised log alphas, log scales, log-likelihood
+    def _backward(self, log_B, log_scales): ...
     def score(self, X_list): ...
     def fit_baum_welch(self, X_list): ...           # stop when |ΔLL| < tol; max_iter = safety cap
     def predict_viterbi(self, X): ...               # log space with backpointers
@@ -404,11 +405,11 @@ class GaussianHMM:
 6. **Invariants:** rows of A and π sum to 1, and every variance is ≥ the floor, after every M-step.
 
 **Tasks** (notebook Section 5 "HMM implementation" + Section 6)
-- [ ] Emissions + scaled forward/backward + `score`.
-- [ ] Viterbi.
-- [ ] Baum–Welch for multiple sequences, with ΔLL < 1e-4 stopping and LL history.
-- [ ] Supervised initialisation.
-- [ ] Verification checks 1–6.
+- [x] Emissions + scaled forward/backward + `score`.
+- [x] Viterbi.
+- [x] Baum–Welch for multiple sequences, with ΔLL < 1e-4 stopping and LL history.
+- [x] Supervised initialisation.
+- [x] Verification checks 1–6.
 
 **Commits**
 1. `feat(hmm): add Gaussian emissions and scaled forward-backward`
@@ -419,14 +420,16 @@ class GaussianHMM:
 6. `test(hmm): add synthetic parameter recovery check`
 
 **⏸ Checkpoint 6**
-- [ ] All 6 verification checks pass.
-- [ ] Baum–Welch stops on ΔLL < ε (not the iteration cap) on the synthetic data.
-- [ ] Every method has a docstring with shapes; no real activity data is used yet.
+- [x] All 6 verification checks pass.
+- [x] Baum–Welch stops on ΔLL < ε (not the iteration cap) on the synthetic data.
+- [x] Every model method documents its inputs/outputs; no real activity data is used for HMM fitting or verification.
+
+**Observed verification (30 Oct):** likelihood error 2.71e-20 across 64 paths; posterior errors at most 2.23e-16; one M-step matches enumeration. One seeded random start on twelve 250-step synthetic sequences converges in 7 iterations (final ΔLL 3.82e-11 < 1e-4). Matched maximum errors: A=0.01421 (<0.06), μ=0.03212 (<0.15). Every M-step passes probability/variance invariants. Source, seeds and complete histories are saved in `data/verification/hmm.json`; notebook Sections 5–6 display the implementation and assertions.
 
 ---
 
 ## Phase 7 — Training, Evaluation & Visualisation
-**Goal:** a trained model evaluated on the unseen test sessions, plus every figure for the results section.
+**Goal:** a trained model evaluated on the eight held-out test clips, plus every figure for the results section.
 
 **Training strategy**
 1. Supervised emission initialisation from the 44 labelled training clips only. Clips supply persistence observations; cross-activity transitions use an explicit nonzero prior, because session labels are unverified. Do not count cross-transitions from approximate labels.
