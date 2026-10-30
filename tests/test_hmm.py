@@ -60,6 +60,30 @@ class InferenceTests(unittest.TestCase):
         with self.assertRaises(ValueError): GaussianHMM(0, 1)
 
 
+class SupervisedTests(unittest.TestCase):
+    def test_exact_counts_without_cross_recording_transitions(self):
+        m = GaussianHMM(2, 1).fit_supervised([np.array([[0.], [2.]]), np.array([[10.], [10.]])],
+                                            [np.array([0, 0]), np.array([1, 1])])
+        np.testing.assert_allclose(m.pi, [.5, .5])
+        np.testing.assert_allclose(m.A, [[2/3, 1/3], [1/3, 2/3]])
+        np.testing.assert_array_equal(m.supervised_counts_['transitions'], np.eye(2))
+        np.testing.assert_allclose(m.means, [[1], [10]])
+        np.testing.assert_allclose(m.variances, [[1], [m.var_floor]])
+
+    def test_custom_prior_and_real_within_sequence_transition(self):
+        m = GaussianHMM(2, 1).fit_supervised([np.array([[0.], [2.], [2.]])], [np.array([0, 1, 1])],
+                                            transition_prior=[[9, 1], [1, 9]], initial_prior=[2, 1])
+        np.testing.assert_allclose(m.pi, [.75, .25])
+        np.testing.assert_allclose(m.A, [[9/11, 2/11], [1/11, 10/11]])
+
+    def test_missing_states_invalid_labels_and_priors_fail(self):
+        m = GaussianHMM(2, 1); X = [np.zeros((2, 1))]
+        for y in [[], [np.array([0, 0])], [np.array([0., 1.])], [np.array([0, 2])], [np.array([0])]]:
+            with self.assertRaises(ValueError): m.fit_supervised(X, y)
+        with self.assertRaises(ValueError):
+            m.fit_supervised(X, [np.array([0, 1])], transition_prior=0)
+
+
 class EMTests(unittest.TestCase):
     def test_em_monotonicity_convergence_and_all_step_invariants(self):
         rng = np.random.default_rng(81)

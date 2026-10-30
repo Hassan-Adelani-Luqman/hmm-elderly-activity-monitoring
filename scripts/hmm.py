@@ -195,6 +195,49 @@ class GaussianHMM:
         A[active] = transitions[active] / row_counts[active, None]
         self.set_parameters(initial / initial.sum(), A, means, variances)
 
+    def fit_supervised(self, X_list, y_list, transition_prior=1.0, initial_prior=1.0):
+        """Initialise from X_s(T_s,D), integer labels y_s(T_s,) in [0,N); return self.
+
+        Means/population variances use labelled samples, with var_floor. Count
+        starts once per sequence and transitions only within each sequence.
+        Default Laplace pseudocounts are one per entry; explicit positive (N,N)
+        transition and (N,) initial pseudocount arrays are also supported. These
+        priors initialise parameters only, and do not enter subsequent EM.
+        Missing labelled states fail rather than inventing their emissions.
+        """
+        sequences = self._sequences(X_list)
+        labels = [np.asarray(y) for y in y_list]
+        if len(labels) != len(sequences):
+            raise ValueError("Provide one label array per sequence")
+        for X, y in zip(sequences, labels):
+            if (y.shape != (len(X),) or not np.issubdtype(y.dtype, np.integer)
+                    or (y < 0).any() or (y >= self.n_states).any()):
+                raise ValueError("Labels must be integer states with shape (T_s,)")
+        transition_prior = np.broadcast_to(np.asarray(transition_prior, dtype=float), (self.n_states, self.n_states)).copy()
+        initial_prior = np.broadcast_to(np.asarray(initial_prior, dtype=float), (self.n_states,)).copy()
+        if any(not np.isfinite(p).all() or (p <= 0).any() for p in (transition_prior, initial_prior)):
+            raise ValueError("Prior pseudocounts must be finite and strictly positive")
+        starts = np.zeros(self.n_states)
+        transitions = np.zeros((self.n_states, self.n_states))
+        for y in labels:
+            starts[y[0]] += 1
+            np.add.at(transitions, (y[:-1], y[1:]), 1)
+        means, variances, counts = [], [], []
+        for state in range(self.n_states):
+            values = np.concatenate([X[y == state] for X, y in zip(sequences, labels)])
+            if len(values) == 0:
+                raise ValueError(f"No labelled observations for state {state}")
+            means.append(values.mean(axis=0))
+            variances.append(np.maximum(values.var(axis=0), self.var_floor))
+            counts.append(len(values))
+        initial = starts + initial_prior
+        A = transitions + transition_prior
+        self.set_parameters(initial / initial.sum(), A / A.sum(axis=1, keepdims=True), means, variances)
+        self.supervised_counts_ = {"starts": starts, "transitions": transitions,
+                                   "observations": np.array(counts),
+                                   "initial_prior": initial_prior, "transition_prior": transition_prior}
+        return self
+
     def _invariants(self):
         """Validate parameters and return scalar diagnostics for one M-step."""
         self._validate_parameters()
