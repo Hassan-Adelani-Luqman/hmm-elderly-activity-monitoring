@@ -1,0 +1,45 @@
+{
+  "primary_model": "baum_welch",
+  "model_artifact_sha256": "71c343b8d09c1763a665b2b6ceb9dc49edf32d219e94f7a793e80c021259adf1",
+  "evaluation_source_sha256": "5edf5c4bfbc9736c49d520713aeccef29441e134002cf49ef1b0a7a59193883e",
+  "state_order": [
+    "still",
+    "standing",
+    "walking",
+    "jumping"
+  ],
+  "evaluation_policy": "Fixed planned parameters and primary Baum-Welch model; no hyperparameter search or model selection using test metrics",
+  "metric_definitions": {
+    "sensitivity": "TP/(TP+FN)",
+    "specificity": "TN/(TN+FP)",
+    "class_accuracy": "(TP+TN)/N, one-vs-rest",
+    "overall_accuracy": "sum(diagonal confusion)/N",
+    "overall_sensitivity_specificity": "Macro average across defined class rates"
+  },
+  "test_sequences": [
+    "jumping_02",
+    "jumping_07",
+    "standing_06",
+    "standing_13",
+    "still_02",
+    "still_11",
+    "walking_02",
+    "walking_10"
+  ],
+  "test_feature_sha256": {
+    "jumping_02": "ac3d0e4c757fc8d7b5d4f1bee1214594e9318e4287fa0214d60b7e7bcb69a638",
+    "jumping_07": "8c513893221d23fb1d5dd431eb8a4745c30c7bee26239bc0900cedfcdbb33757",
+    "standing_06": "be8ba4a82b8a6c539a7a3cade5e3125e7c101ffcb464bb8b53968d787b254fe0",
+    "standing_13": "de7cdf162dee22f7978aaa3165ca6ac010c17cdc38c32ea6888687b79af631ef",
+    "still_02": "78ad475afc7b24fce11f367b9b35504f7f27c9156b9f5ccd0da911ad7d7b67b7",
+    "still_11": "c4fe52fa2f6722a27ff25f317c509f7dbe21880bdbee2e12e7aa3eedf17734ad",
+    "walking_02": "ca251d727f220c405fabb11f63d5f4e63c012a2f3d7ff481490515c654fe8af1",
+    "walking_10": "1fd4923286f2a3182a5c58bd40f86651e9113299f100c0926d8140e2c0fbc0ce"
+  },
+  "limitations": [
+    "Eight clips, two per activity; 65 overlapping windows are not independent trials",
+    "Same participant/device/collection conditions; test clips previously quality-inspected",
+    "No real cross-activity test transitions, unseen-day/place or elderly/fall validation",
+    "Training accuracy is resubstitution, not validation performance"
+  ]
+}
