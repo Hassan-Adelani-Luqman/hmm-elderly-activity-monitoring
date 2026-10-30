@@ -16,7 +16,8 @@ The plan is split into **10 phases (0–9)**. Each phase ends with a **⏸ Verif
 - **Phase 3:** corrected preprocessing, all-clip validation, metadata, figures and quality reports. The 52 clips retain 5–10 s each and ≥90 s per activity. Session gaps are never interpolated across.
 - **Phase 4 complete under revised design:** a frozen whole-recording split assigns 44 clips to training and 8 to testing (11/2 per activity; seed 42). All 52 remain collected data. The test clips were previously quality-inspected but have never been used for learned feature/model fitting. They assess same-collection single-activity recognition, not a new day/place or continuous cross-activity transitions. See `data/split_manifest.csv` and `docs/phase4_test_data.md`.
 - **Phase 5 complete:** 50-sample windows with a 25-sample hop yield 338 labelled training, 65 held-out test and 137 optional unlabelled windows. Training-only correlation screening retains 10 features (7 time-domain, 3 FFT); z-score selection/statistics use only the 44 labelled training clips. Provenance, plots and analytical checks are saved. See `docs/phase5_features.md`.
-- **Phase 6 complete:** from-scratch NumPy Gaussian HMM with scaled log-space forward/backward, Viterbi, supervised initialisation and multi-sequence Baum–Welch. Exact 64-path checks and synthetic recovery pass; the synthetic run converges in 7 iterations on the likelihood tolerance. No activity HMM fitted or evaluated. See `docs/phase6_hmm.md` and `data/verification/hmm.json`.
+- **Phase 6 complete:** from-scratch NumPy Gaussian HMM with scaled log-space forward/backward, Viterbi, supervised initialisation and multi-sequence Baum–Welch. Exact 64-path checks and synthetic recovery pass; the synthetic run converges in 7 iterations on the likelihood tolerance. That phase used synthetic verification only; activity fitting follows in Phase 7. See `docs/phase6_hmm.md` and `data/verification/hmm.json`.
+- **Phase 7 complete:** fixed-protocol training on 44 clips/338 windows; EM converges in 8 updates. The preselected Baum–Welch model scores 63/65 test windows (96.92%); supervised HMM and independent Gaussian baseline each score 64/65 (98.46%). Both primary errors are standing→walking in standing_06. All comparisons, metric tables, independent clip timelines and Figures 2–4 are saved. No choices were tuned on test performance. See `docs/phase7_results.md`.
 - **No-re-recording decision:** the participant has no session footage or precise timer records; the approximate 15 s schedule does not verify activity boundaries. Keep original labels only as provisional diagnostic annotations. Recover four independent **unlabelled** session blocks, with original timestamps and recorded orientation. Use the 44 labelled training clips for supervised initialisation and an explicit transition prior; optionally refine with Baum–Welch on unlabelled blocks later. Two labelled training sessions were a design choice and are no longer a completion requirement. Eight whole-recording held-out test clips now supply the evaluation partition.
 - **Remaining phase 1–3 evidence:** resolve the video framing findings, verify active phone logging and the matching recordings, and perform a final signed-out playback check. See `docs/video_review.md`. See `docs/collection_completion.md` and `docs/video_checklist.csv`.
 - Generated evidence: `data/quality/status.json`, `sampling.csv`, `gaps.csv`, `clip_intervals.csv`, `unlabelled_sequences.csv`, and the executed notebook. `training_ready` and `test_ready` certify the valid collection and fixed 44/8 partition only; it does not certify videos or session ground truth.
@@ -433,7 +434,7 @@ class GaussianHMM:
 
 **Training strategy**
 1. Supervised emission initialisation from the 44 labelled training clips only. Clips supply persistence observations; cross-activity transitions use an explicit nonzero prior, because session labels are unverified. Do not count cross-transitions from approximate labels.
-2. Baum–Welch refinement over training sequences, optionally including recovered **unlabelled** session blocks. Keep every clip/block as its own sequence and never count transitions across file or gap boundaries. Fit preprocessing statistics using training data only; document the session grip difference.
+2. Baum–Welch refinement over training sequences, excluding the optional recovered **unlabelled** session blocks in this fixed run because their grip/timing concerns were documented before testing. Keep every clip/block as its own sequence and never count transitions across file or gap boundaries. Fit preprocessing statistics using training data only; document the session grip difference.
 3. State-to-label mapping check (Hungarian on the training confusion matrix).
 4. Compare: **(a)** supervised only · **(b)** supervised + Baum–Welch · **(c)** per-window Gaussian classifier with no transitions (baseline). Baum–Welch maximises likelihood, not accuracy, so report whichever result happens and explain it.
 
@@ -459,25 +460,27 @@ class GaussianHMM:
 - Notebook only: A before vs after Baum–Welch; Gaussian curves per state for 2–3 key features.
 
 **Tasks** (notebook Section 7 "Training" + Section 8 "Evaluation")
-- [ ] Train models (a), (b), (c); mapping check.
-- [ ] Metrics functions + results table.
-- [ ] Figs. 2–4 + the notebook-only plots.
-- [ ] Short interpretation markdown under each result.
+- [x] Train models (a), (b), (c); mapping check.
+- [x] Metrics functions + results table.
+- [x] Figs. 2–4 + the notebook-only plots.
+- [x] Short interpretation markdown under each result.
 
 **Commits**
 1. `feat(notebook): train supervised and Baum-Welch HMMs on activity data`
 2. `feat(notebook): add no-transition baseline for comparison`
 3. `feat(notebook): add per-class metrics and confusion matrix on test data`
 4. `feat(notebook): add transition and emission probability plots`
-5. `feat(notebook): add decoded sequence plots for test sessions`
+5. `feat(notebook): add independent decoded sequence plots for test clips`
 6. `docs(figures): export report figures`
 
 **⏸ Checkpoint 7**
-- [ ] The test data was used **only** for final evaluation (no tuning on it).
-- [ ] The metrics table is complete and consistent with the confusion matrix (the counts add up).
-- [ ] The rows of the transition heatmap sum to 1; the decoded timelines are readable.
-- [ ] Figs. 2–4 are legible at half-page width.
-- [ ] Restart & Run All succeeds on the whole notebook.
+- [x] After the fixed split, test features/labels were used only for final evaluation (no fitting, mapping or tuning). Earlier quality inspection/cropping remains disclosed.
+- [x] The metrics table is complete and consistent with the confusion matrix (the counts add up).
+- [x] The rows of the transition heatmap sum to 1; the decoded timelines are readable.
+- [x] Figs. 2–4 are legible at half-page width.
+- [x] Restart & Run All succeeds on the whole notebook.
+
+**Observed results (30 Oct):** training LL 654.817634 → 674.289539, 8 EM updates, final ΔLL 3.58964e-5. Identity state maps are fitted on training only. Primary train accuracy 336/338=99.41%, test 63/65=96.92%; supervised and Gaussian baseline test 64/65=98.46%. Primary standing sensitivity 88.89%, walking specificity 95.74%, macro sensitivity/specificity 97.22%/98.94%. Errors remain labelled standing; higher LL did not improve classification. The 65 windows overlap and come from only eight same-collection clips. Near-absorbing transitions are a limitation of single-activity training, not validated activity dynamics. See `data/models/`, `data/evaluation/` and `docs/phase7_results.md`.
 
 ---
 
@@ -493,8 +496,8 @@ class GaussianHMM:
 | **Discussion and Conclusion** | 0.9 | See the points below |
 
 **Discussion points**
-- **Hardest pair:** likely still vs standing (orientation features separate them). **Easiest:** jumping (very large energy and peak-to-peak values).
-- **Transitions:** a strong diagonal shows that activities persist. Still ↔ standing is the gateway (you pick the phone up or put it down while standing); still → jumping should be near zero. In the use case, impact → long still would be an alert pattern.
+- **Observed confusion:** both primary test errors are standing → walking in standing_06. Still and jumping have no errors in this small holdout; avoid claiming they are universally easy. Orientation and motion-intensity features explain the collection-specific separation.
+- **Transitions:** the strong diagonal and near-absorbing still/jumping rows reflect single-activity training clips. Cross-activity dynamics and impact → inactivity alerts have not been validated; distinguish a proposed monitoring use case from demonstrated performance.
 - **Noise and sampling:** the delivered rate differed from the configured rate (58.4 vs 100 Hz); acc and gyro are sampled at different instants; gyroscope drift; interpolation; aliasing; why 25 Hz is enough and what is lost above 12.5 Hz (sharpness of impacts); the lower-rate pilot demonstrates processing compatibility, but no unseen lower-rate generalisation was tested.
 - **Improvements:** more participants and devices; pocket or belt placement (more realistic for older adults); barometer for fall detection; GMM emissions; a duration-aware HSMM.
 
