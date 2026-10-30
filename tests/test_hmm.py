@@ -60,5 +60,48 @@ class InferenceTests(unittest.TestCase):
         with self.assertRaises(ValueError): GaussianHMM(0, 1)
 
 
+class EMTests(unittest.TestCase):
+    def test_em_monotonicity_convergence_and_all_step_invariants(self):
+        rng = np.random.default_rng(81)
+        X = [np.r_[rng.normal(-2, .3, (50, 1)), rng.normal(2, .4, (50, 1))] for _ in range(3)]
+        m = toy_model().fit_baum_welch(X)
+        self.assertTrue(m.converged_)
+        self.assertEqual(m.stop_reason_, 'likelihood_tolerance')
+        self.assertLess(m.n_iter_, m.max_iter)
+        self.assertTrue((np.diff(m.history_) >= 0).all())
+        self.assertLess(abs(m.history_[-1]-m.history_[-2]), m.tol)
+        self.assertAlmostEqual(m.score(X), m.history_[-1])
+        self.assertEqual(len(m.invariant_history_), m.n_iter_)
+        for row in m.invariant_history_:
+            self.assertLessEqual(row['A_row_sum_error'], 1e-12)
+            self.assertLessEqual(row['pi_sum_error'], 1e-12)
+            self.assertGreaterEqual(row['minimum_variance'], m.var_floor)
+
+    def test_singletons_do_not_create_transitions_and_zero_occupancy(self):
+        m = GaussianHMM(2, 1).set_parameters([1, 0], np.eye(2), [[0], [99]], [[1], [2]])
+        m.fit_baum_welch([np.array([[2.]]), np.array([[2.]])])
+        np.testing.assert_array_equal(m.A, np.eye(2))
+        np.testing.assert_array_equal(m.means, [[2], [99]])
+        np.testing.assert_array_equal(m.variances, [[m.var_floor], [2]])
+
+    def test_one_step_matches_independent_single_state_mle(self):
+        m = GaussianHMM(1, 1, max_iter=1).set_parameters([1], [[1]], [[0]], [[5]])
+        m.fit_baum_welch([np.array([[2.], [4.]]), np.array([[6.]])])
+        np.testing.assert_allclose(m.means, [[4.]])
+        np.testing.assert_allclose(m.variances, [[8/3]])
+        self.assertFalse(m.converged_)
+        self.assertEqual(m.stop_reason_, 'max_iter')
+
+    def test_likelihood_decrease_rolls_back(self):
+        class BrokenUpdate(GaussianHMM):
+            def _m_step(self, sequences, posteriors):
+                self.means[:] = 1e5
+        m = BrokenUpdate(1, 1).set_parameters([1], [[1]], [[0]], [[1]])
+        with self.assertRaisesRegex(FloatingPointError, 'decreased'):
+            m.fit_baum_welch([np.zeros((3, 1))])
+        np.testing.assert_array_equal(m.means, [[0]])
+        self.assertEqual(len(m.history_), 1)
+
+
 if __name__ == '__main__':
     unittest.main()

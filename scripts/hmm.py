@@ -169,3 +169,78 @@ class GaussianHMM:
         for t in range(len(log_B)-1, 0, -1):
             path[t-1] = back[t, path[t]]
         return path
+
+    def _m_step(self, sequences, posteriors):
+        """Update parameters from X_s(T_s,D), gamma_s(T_s,N), xi_s(T_s-1,N,N).
+
+        This is maximum-likelihood EM with a constrained variance floor, without
+        probability pseudocounts. Unoccupied states/transition rows retain their
+        previous parameters. Each sequence contributes its own initial state.
+        """
+        weights = sum(gamma.sum(axis=0) for gamma, _, _ in posteriors)
+        initial = sum(gamma[0] for gamma, _, _ in posteriors)
+        transitions = sum(xi.sum(axis=0) for _, xi, _ in posteriors)
+        means = self.means.copy()
+        variances = self.variances.copy()
+        occupied = weights > 0
+        first_moment = sum(gamma.T @ X for X, (gamma, _, _) in zip(sequences, posteriors))
+        means[occupied] = first_moment[occupied] / weights[occupied, None]
+        # Centre at the NEW means, avoiding E[X²] - E[X]² cancellation.
+        squared = sum(np.einsum('tn,tnd->nd', gamma, (X[:, None, :] - means)**2)
+                      for X, (gamma, _, _) in zip(sequences, posteriors))
+        variances[occupied] = np.maximum(squared[occupied] / weights[occupied, None], self.var_floor)
+        A = self.A.copy()
+        row_counts = transitions.sum(axis=1)
+        active = row_counts > 0
+        A[active] = transitions[active] / row_counts[active, None]
+        self.set_parameters(initial / initial.sum(), A, means, variances)
+
+    def _invariants(self):
+        """Validate parameters and return scalar diagnostics for one M-step."""
+        self._validate_parameters()
+        return {"pi_sum_error": float(abs(self.pi.sum()-1)),
+                "A_row_sum_error": float(np.max(abs(self.A.sum(axis=1)-1))),
+                "minimum_variance": float(self.variances.min())}
+
+    def fit_baum_welch(self, X_list):
+        """Fit independent X_s(T_s,D) arrays from existing parameters; return self.
+
+        history_ contains the initial total LL and each accepted update's LL.
+        Stop when absolute total LL improvement < tol; max_iter is only a cap.
+        A meaningful decrease raises and restores the previous parameters. A
+        tiny roundoff decrease is rolled back and reported as a numerical plateau.
+        No labels, test data, smoothing counts or cross-file transitions enter EM.
+        """
+        sequences = self._sequences(X_list)
+        self._validate_parameters()
+        self.history_ = [self.score(sequences)]
+        self.invariant_history_ = []
+        self.converged_, self.n_iter_, self.stop_reason_ = False, 0, "max_iter"
+        for iteration in range(1, self.max_iter + 1):
+            posteriors = [self._posteriors(X) for X in sequences]
+            previous = tuple(p.copy() for p in (self.pi, self.A, self.means, self.variances))
+            try:
+                self._m_step(sequences, posteriors)
+                invariant = self._invariants()
+                likelihood = self.score(sequences)
+                delta = likelihood - self.history_[-1]
+                roundoff = 1e-9 + 100*np.finfo(float).eps*abs(self.history_[-1])
+                if delta < -roundoff:
+                    raise FloatingPointError(f"EM log likelihood decreased by {delta}")
+            except Exception:
+                self.set_parameters(*previous)
+                raise
+            if delta < 0:
+                self.set_parameters(*previous)
+                likelihood, delta = self.history_[-1], 0.0
+                invariant = self._invariants()
+                self.stop_reason_ = "roundoff_plateau"
+            self.history_.append(likelihood)
+            self.invariant_history_.append(invariant)
+            self.n_iter_ = iteration
+            if abs(delta) < self.tol:
+                self.converged_ = True
+                if self.stop_reason_ != "roundoff_plateau":
+                    self.stop_reason_ = "likelihood_tolerance"
+                break
+        return self
