@@ -27,7 +27,7 @@ schedule cannot establish exact ground-truth activity boundaries.
 
 ## How to use the existing data honestly
 
-Use `data/processed/train/clips/*.csv` for supervised emission initialisation and
+Use the 44 files in `data/processed/train/clips/*.csv` for supervised emission initialisation and
 training-only feature selection/scaling. The clip labels come from the original
 single-activity recordings. Signal inspection was used to select crop intervals,
 not to claim video verification or to invent a new activity label.
@@ -53,9 +53,7 @@ portion; the long outage and short tail contribute no training observations.
 
 The original plan requested two labelled **training** sessions. That was a design
 choice, not a rubric requirement. It has been replaced by labelled clips plus
-optional independent unlabelled sequences. The rubric's **two unseen test files**
-remain a later requirement; training clips or recovered blocks cannot serve as
-unseen test data.
+optional independent unlabelled sequences. Phase 4 now reserves **eight whole clips** from the original collection as test data before any model fitting. These files are removed from training outputs and fixed in `data/split_manifest.csv`. Existing quality inspection is disclosed; recovered unlabelled blocks are never evaluation ground truth. See `phase4_test_data.md`.
 
 ## Remaining video evidence
 
@@ -86,8 +84,8 @@ From the repository root, using the pinned environment:
 ```
 
 Run the notebook top-to-bottom. The strict pipeline command verifies the revised
-clip dataset requirement and writes a fresh readiness report. It does not certify
-video evidence, session labels, or the future unseen test set. Derived output
+44-training/8-test partition and collection requirements and writes a fresh readiness report. It does not certify
+video evidence, session labels, or generalisation outside the held-out collection. Derived output
 directories are pipeline-owned: obsolete generated CSVs are removed on rerun.
 All raw files and original labels are preserved.
 

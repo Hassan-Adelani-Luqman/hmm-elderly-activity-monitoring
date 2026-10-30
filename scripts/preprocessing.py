@@ -1,7 +1,7 @@
 """Auditable phase 1–3 preprocessing; no gaps or ground-truth labels are invented.
 
 Run from any directory: python scripts/preprocessing.py [--require-complete]
-The strict option exits nonzero until all 52 collected clips pass validation. Unverified session
+The strict option exits nonzero until all 52 clips pass their fixed 44/8 split. Unverified session
 blocks are exported separately without labels; they are never supervised truth.
 Videos are a separate, human-verified collection requirement.
 """
@@ -14,6 +14,11 @@ import json
 import numpy as np
 import pandas as pd
 from scipy.signal import butter, sosfiltfilt
+
+if __package__:
+    from .splits import load_split_manifest, verify_split_outputs
+else:
+    from splits import load_split_manifest, verify_split_outputs
 
 ACTIVITIES = ["still", "standing", "walking", "jumping"]
 SENSOR_FILES = {"acc": "TotalAcceleration.csv", "gyro": "Gyroscope.csv"}
@@ -280,9 +285,32 @@ def save_processed(df, out_path):
 
 
 def require_training_ready(status):
-    """Require the validated clip collection; videos are verified separately."""
+    """Require the fixed split and valid collection; never fit on test clips."""
     if not status["training_ready"]:
         raise ValueError("Training blocked: " + "; ".join(status["blockers"]))
+
+
+def load_labelled_sequences(root, split):
+    """Load only one fixed split as separate (name, DataFrame) sequences.
+
+    Future feature extraction must fit on split='train' only. A test sequence
+    is never concatenated with another clip, and no state transition is counted
+    across files. Recheck raw provenance and processed membership on every load.
+    """
+    if split not in ("train", "test"):
+        raise ValueError("Choose train or test explicitly")
+    root = Path(root)
+    manifest = load_split_manifest(root)
+    verify_split_outputs(root / "data/processed", manifest)
+    folder = root / "data/processed" / ("train/clips" if split == "train" else "test")
+    sequences = []
+    for name in sorted(manifest.index[manifest.split == split]):
+        df = pd.read_csv(folder / f"{name}.csv")
+        processed_frame(df.rename(columns={"seconds_elapsed": "t"}))
+        if not (df.activity == manifest.loc[name, "activity"]).all():
+            raise ValueError(f"{name}: processed activity differs from the original label")
+        sequences.append((name, df))
+    return sequences
 
 
 def build_dataset(root, output_dir=None):
@@ -299,6 +327,7 @@ def build_dataset(root, output_dir=None):
     (quality_dir / "status.json").write_text(json.dumps({
         "training_ready": False, "blockers": ["Preprocessing has not completed successfully"]
     }, indent=2) + "\n")
+    split_manifest = load_split_manifest(root)
     crop_path = root / "data/clip_intervals.csv"
     crops = pd.read_csv(crop_path).set_index("file")
     review_path = root / "data/session_review.csv"
@@ -317,7 +346,7 @@ def build_dataset(root, output_dir=None):
             continue
         name = path.name
         activity = relative.parts[1] if rec_type == "clip" else "mixed" if rec_type in ("session", "test") else "pilot"
-        split = "pilot" if rec_type == "pilot" else "test" if rec_type == "test" else "train"
+        split = split_manifest.loc[name, "split"] if rec_type == "clip" else "pilot" if rec_type == "pilot" else "test" if rec_type == "test" else "train"
         # Fail loudly on malformed files; do not leave them silently usable.
         rec = load_recording(path)
         rec.update(activity=activity, rec_type=rec_type, split=split)
@@ -356,7 +385,7 @@ def build_dataset(root, output_dir=None):
                     crop = crops.loc[name]
                     df = trim_clip(df, crop.start_s, crop.end_s)
                     df["activity"] = activity
-                    crop_log.append({"file": name, "activity": activity,
+                    crop_log.append({"file": name, "activity": activity, "split": split,
                                      "start_s": df.t.iloc[0], "end_s": df.t.iloc[-1],
                                      "duration_s": (int(df.timestamp_ns.iloc[-1]) - int(df.timestamp_ns.iloc[0])) / 1e9,
                                      "n_samples": len(df), "source_sha256": fingerprint})
@@ -370,7 +399,18 @@ def build_dataset(root, output_dir=None):
                 reasons.append(str(error))
         if reasons:
             rejected.append({"recording": name, "type": rec_type, "reason": "; ".join(reasons), "source_sha256": fingerprint})
-    for kind, split, folder in [("clip", "train", "train/clips"), ("session", "train", "train/sessions")]:
+    # This is a single-phone collection. Reject any optional training block whose
+    # acquisition time overlaps a held-out clip, including renamed session copies.
+    test_records = [rec for rec in records if rec["rec_type"] == "clip" and rec["split"] == "test"]
+    for block in unlabelled:
+        lo, hi = block["df"].timestamp_ns.iloc[[0, -1]]
+        for rec in test_records:
+            test_lo = min(rec[s].timestamp_ns.iloc[0] for s in SENSOR_FILES)
+            test_hi = max(rec[s].timestamp_ns.iloc[-1] for s in SENSOR_FILES)
+            if lo <= test_hi and hi >= test_lo:
+                raise ValueError("Unlabelled training block overlaps a held-out recording")
+    for kind, split, folder in [("clip", "train", "train/clips"), ("clip", "test", "test"),
+                                 ("session", "train", "train/sessions")]:
         target = output_dir / folder
         target.mkdir(parents=True, exist_ok=True)
         selected = [rec for rec in accepted if rec["rec_type"] == kind and rec["split"] == split]
@@ -380,12 +420,21 @@ def build_dataset(root, output_dir=None):
                 stale.unlink()
         for rec in selected:
             save_processed(rec["df"], target / f"{rec['name']}.csv")
-    crop_df = pd.DataFrame(crop_log, columns=["file", "activity", "start_s", "end_s", "duration_s", "n_samples", "source_sha256"])
+    crop_df = pd.DataFrame(crop_log, columns=["file", "activity", "split", "start_s", "end_s", "duration_s", "n_samples", "source_sha256"])
     totals = {a: round(float(crop_df.loc[crop_df.activity == a, "duration_s"].sum()), 2) for a in ACTIVITIES}
     counts = {a: int((crop_df.activity == a).sum()) for a in ACTIVITIES}
     n_sessions = sum(r["rec_type"] == "session" for r in accepted)
     blockers = [f"{a}: {counts[a]}/13 valid clips" for a in ACTIVITIES if counts[a] != 13]
     blockers += [f"{a}: {totals[a]:.2f}s < 90s" for a in ACTIVITIES if totals[a] < 90]
+    for split, count in [("train", 11), ("test", 2)]:
+        for activity in ACTIVITIES:
+            actual = int(((crop_df.activity == activity) & (crop_df.split == split)).sum())
+            if actual != count:
+                blockers.append(f"{activity}: {actual}/{count} valid {split} clips")
+    try:
+        verify_split_outputs(output_dir, split_manifest)
+    except ValueError as error:
+        blockers.append(str(error))
     # Updated no-re-recording strategy: the rubric requires unseen TEST files,
     # not two labelled TRAINING sessions. Never certify approximate boundaries.
     target = output_dir / "unlabelled/sessions"
@@ -408,10 +457,14 @@ def build_dataset(root, output_dir=None):
     pd.DataFrame(block_log, columns=["sequence", "recording", "start_s", "end_s", "duration_s", "n_samples", "source_sha256", "label_status"]).to_csv(
         quality_dir / "unlabelled_sequences.csv", index=False)
     status = {"training_ready": not blockers, "accepted_clips": len(crop_df), "accepted_sessions": n_sessions,
+              "training_clips": int((crop_df.split == "train").sum()),
+              "test_clips": int((crop_df.split == "test").sum()),
+              "test_ready": not blockers,
               "clip_seconds_per_activity": totals, "blockers": blockers,
               "unlabelled_session_sequences": len(unlabelled),
               "verified_session_labels_available": n_sessions > 0,
-              "training_strategy": "Labelled clips for supervised initialisation; explicit transition prior; optional independent unlabelled blocks for EM; test partition still required before fitting",
+              "training_strategy": "44 labelled training clips; 8 held-out clips excluded from fitting/tuning; explicit transition prior; optional independent unlabelled training blocks for EM",
+              "evaluation_scope": "Previously inspected same-collection clips; no claim of unseen-day/environment or cross-activity transition generalisation",
               "video_verification": "External evidence required; not certified by this pipeline"}
     pd.DataFrame(catalog).to_csv(prior_path, index=False, float_format="%.6f")
     pd.DataFrame(quality).to_csv(quality_dir / "sampling.csv", index=False)
@@ -421,7 +474,8 @@ def build_dataset(root, output_dir=None):
     (quality_dir / "status.json").write_text(json.dumps(status, indent=2) + "\n")
     return {"records": records, "accepted": accepted, "quality": pd.DataFrame(quality),
             "rejected": pd.DataFrame(rejected), "crops": crop_df, "status": status,
-            "unlabelled": unlabelled, "block_manifest": pd.DataFrame(block_log)}
+            "unlabelled": unlabelled, "block_manifest": pd.DataFrame(block_log),
+            "split_manifest": split_manifest}
 
 
 def main():

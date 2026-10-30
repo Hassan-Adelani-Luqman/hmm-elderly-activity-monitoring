@@ -186,6 +186,8 @@ class PreprocessingTests(unittest.TestCase):
                                "sensors": "TotalAcceleration|Gyroscope", "sampleRateMs": "10|10"}]).to_csv(path / "Metadata.csv", index=False)
             pd.DataFrame([{"file": "standing_01", "start_s": 2, "end_s": 12,
                            "source_sha256": recording_fingerprint(paths[0])}]).to_csv(root / "data/clip_intervals.csv", index=False)
+            pd.DataFrame([{"file": "standing_01", "activity": "standing", "split": "train",
+                           "source_sha256": recording_fingerprint(paths[0])}]).to_csv(root / "data/split_manifest.csv", index=False)
             pd.DataFrame([{"file": "train_session_01", "status": "pending", "source_sha256": "",
                            "evidence": ""}]).to_csv(root / "data/session_review.csv", index=False)
             stale = root / "data/processed/train/sessions/train_session_01.csv"
@@ -205,9 +207,8 @@ class PreprocessingTests(unittest.TestCase):
             changed = pd.read_csv(path)
             changed.loc[0, "x"] += .01
             changed.to_csv(path, index=False)
-            revised = build_dataset(root)
-            self.assertEqual(revised["status"]["accepted_clips"], 0)
-            self.assertIn("crop interval missing or stale", revised["rejected"].reason.iloc[0])
+            with self.assertRaisesRegex(ValueError, "split provenance is stale"):
+                build_dataset(root)
             import json
             self.assertFalse(json.loads((root / "data/quality/status.json").read_text())["training_ready"])
 

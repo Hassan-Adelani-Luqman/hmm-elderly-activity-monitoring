@@ -2,6 +2,9 @@
   "training_ready": true,
   "accepted_clips": 52,
   "accepted_sessions": 0,
+  "training_clips": 44,
+  "test_clips": 8,
+  "test_ready": true,
   "clip_seconds_per_activity": {
     "still": 130.0,
     "standing": 119.84,
@@ -11,6 +14,7 @@
   "blockers": [],
   "unlabelled_session_sequences": 4,
   "verified_session_labels_available": false,
-  "training_strategy": "Labelled clips for supervised initialisation; explicit transition prior; optional independent unlabelled blocks for EM; test partition still required before fitting",
+  "training_strategy": "44 labelled training clips; 8 held-out clips excluded from fitting/tuning; explicit transition prior; optional independent unlabelled training blocks for EM",
+  "evaluation_scope": "Previously inspected same-collection clips; no claim of unseen-day/environment or cross-activity transition generalisation",
   "video_verification": "External evidence required; not certified by this pipeline"
 }

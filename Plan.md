@@ -14,9 +14,10 @@ The plan is split into **10 phases (0–9)**. Each phase ends with a **⏸ Verif
 - **Phase 1:** pilot conclusions verified; jitter wording corrected to ≤0.315 ms for the pilots only.
 - **Phase 2:** 52 clips and two incomplete session exports exist. All four links are received in the Git-ignored `videos.txt`. Unauthenticated YouTube metadata and previews are accessible (14–45 s total duration). Preview review found full-body framing issues in all four videos and absent face framing during the still demonstration; compliance remains open.
 - **Phase 3:** corrected preprocessing, all-clip validation, metadata, figures and quality reports. The 52 clips retain 5–10 s each and ≥90 s per activity. Session gaps are never interpolated across.
-- **No-re-recording decision:** the participant has no session footage or precise timer records; the approximate 15 s schedule does not verify activity boundaries. Keep original labels only as provisional diagnostic annotations. Recover four independent **unlabelled** session blocks, with original timestamps and recorded orientation. Use labelled clips for supervised initialisation and an explicit transition prior; optionally refine with Baum–Welch on unlabelled blocks later. Two labelled training sessions were a design choice and are no longer a completion requirement. Two unseen **test** files remain required.
+- **Phase 4 complete under revised design:** a frozen whole-recording split assigns 44 clips to training and 8 to testing (11/2 per activity; seed 42). All 52 remain collected data. The test clips were previously quality-inspected but have never been used for learned feature/model fitting. They assess same-collection single-activity recognition, not a new day/place or continuous cross-activity transitions. See `data/split_manifest.csv` and `docs/phase4_test_data.md`.
+- **No-re-recording decision:** the participant has no session footage or precise timer records; the approximate 15 s schedule does not verify activity boundaries. Keep original labels only as provisional diagnostic annotations. Recover four independent **unlabelled** session blocks, with original timestamps and recorded orientation. Use the 44 labelled training clips for supervised initialisation and an explicit transition prior; optionally refine with Baum–Welch on unlabelled blocks later. Two labelled training sessions were a design choice and are no longer a completion requirement. Eight whole-recording held-out test clips now supply the evaluation partition.
 - **Remaining phase 1–3 evidence:** resolve the video framing findings, verify active phone logging and the matching recordings, and perform a final signed-out playback check. See `docs/video_review.md`. See `docs/collection_completion.md` and `docs/video_checklist.csv`.
-- Generated evidence: `data/quality/status.json`, `sampling.csv`, `gaps.csv`, `clip_intervals.csv`, `unlabelled_sequences.csv`, and the executed notebook. `training_ready` certifies the revised clip dataset only; it does not certify videos or session ground truth.
+- Generated evidence: `data/quality/status.json`, `sampling.csv`, `gaps.csv`, `clip_intervals.csv`, `unlabelled_sequences.csv`, and the executed notebook. `training_ready` and `test_ready` certify the valid collection and fixed 44/8 partition only; it does not certify videos or session ground truth.
 
 The original timeline and commit lists below are historical planning targets, not evidence that a task or checkpoint passed. The revisions in this status section and A1 row 17 supersede the original requirement for labelled training transitions.
 
@@ -30,8 +31,8 @@ The original timeline and commit lists below are historical planning targets, no
 |---|---|---|
 | 1 | Group vs individual | **Individual.** First person; one participant |
 | 2 | Dataset size | **52 single-activity clips (13 per activity)**, giving ≥50 files and ≥90 s per activity after reviewed cropping. Four independent unlabelled blocks are recovered from the two incomplete training session exports (row 17) |
-| 3 | Devices | **One Android phone** (Infinix X6855, Android 36, Sensor Logger 1.68). Two real rates: test session 2 is recorded at the lower setting. Everything is harmonised to **25 Hz** (see row 15) |
-| 4 | Test data | **2 continuous multi-activity sessions**, recorded on a different day and in a different place |
+| 3 | Devices | **One Android phone** (Infinix X6855, Android 36, Sensor Logger 1.68). Two measured rates exist in the collection/pilots. All selected training and test clips use the 100 Hz setting; the 50 Hz pilot demonstrates lower-rate processing only. Everything is harmonised to **25 Hz** (see rows 15 and 18) |
+| 4 | Test data | **8 held-out single-activity clips**, 2 per activity, selected once before feature/model fitting from the existing 52 clips. Shared days/device/participant; no continuous-transition or new-environment evaluation claim (row 18) |
 | 5 | Submission | `.docx` upload with the GitHub link on page 1; report copy also committed to the repo |
 | 6 | Results table | "Number of Samples" = **test windows**; per-row accuracy = one-vs-rest; an extra **Overall** row gives true accuracy |
 | 7 | Still video | Show yourself placing the phone on the table and standing beside it, face visible |
@@ -42,9 +43,10 @@ The original timeline and commit lists below are historical planning targets, no
 | 12 | Repo | Public. Videos hosted externally, not committed. No location or GPS data |
 | 13 | Commits | Incremental conventional commits; **no AI co-author or attribution trailers** |
 | 14 | Streams *(pilot, 25 Oct)* | **acc = `TotalAcceleration.csv`** (includes gravity, m/s²); **gyro = `Gyroscope.csv`** (rad/s). The app's `Accelerometer.csv` has gravity removed and is not used. Gravity axis: flat → **z ≈ 9.8**; waist grip → **y ≈ 9.7** (z ≈ 1.3), so still vs standing is separable |
-| 15 | Sampling rate *(pilot, 25 Oct)* | App setting 100 Hz → **delivers 58.4 Hz**; setting 50 Hz → **delivers 29.2 Hz**. Pilot jitter σ ≤ 0.315 ms, no dropped intervals; acc and gyro share **no** timestamps. Training data + test session 1 use the 100 Hz setting; test session 2 uses the 50 Hz setting. **Harmonise to 25 Hz**: anti-alias filter + downsampling, never upsampling |
+| 15 | Sampling rate *(pilot, 25 Oct)* | App setting 100 Hz → **delivers 58.4 Hz**; setting 50 Hz → **delivers 29.2 Hz**. Pilot jitter σ ≤ 0.315 ms, no dropped intervals; acc and gyro share **no** timestamps. All selected training/test clips use the 100 Hz setting; the 50 Hz pilot is not a held-out test. **Harmonise to 25 Hz**: anti-alias filter + downsampling, never upsampling |
 | 16 | Privacy | `device id` in every `Metadata.csv` is redacted with `scripts/redact_metadata.py` before any raw-data commit |
 | 17 | Recovery without re-recording *(29 Oct)* | Split sessions at the union of both sensors’ gaps before filtering; discard short blocks, trim 1 s at block ends, preserve recorded orientation and original time. Export surviving blocks **without labels**. Existing segment times are approximate and cannot be independently verified. Labelled clips support supervised emissions; cross-activity transitions initially use an explicit prior. Optional EM treats each recovered block as a separate sequence. |
+| 18 | Test partition *(29 Oct)* | User clarified that the existing 52 clips should supply train/test data. Freeze 44 train / 8 test (11/2 per activity), sampled once by whole recording with seed 42. Keep crop/filter settings unchanged; fit features/scaling/models using train only. Disclose earlier quality inspection and limited same-collection single-activity evaluation. |
 
 ### A2. Rubric → Phase Map
 
@@ -75,9 +77,9 @@ hmm-elderly-activity-monitoring/
 │   │   ├── sessions/train_session_0N/
 │   │   └── test/test_session_0N/
 │   ├── processed/
-│   │   ├── train/clips/         # 52 clips: 13 per activity
+│   │   ├── train/clips/         # 44 clips: 11 per activity
 │   │   ├── train/sessions/      # train_session_01.csv, train_session_02.csv
-│   │   └── test/                # future unseen test CSVs
+│   │   └── test/                # 8 held-out single-activity CSVs (split_manifest.csv)
 │   ├── labels/                  # session segment tables: start_s, end_s, activity
 │   └── metadata.csv             # file, split, activity, configured_hz, measured_acc_hz,
 │                                #   measured_gyro_hz, duration_s, date, location_type
@@ -259,42 +261,48 @@ hmm-elderly-activity-monitoring/
 
 ---
 
-## Phase 4 — Unseen Test Data Collection
-**Goal:** 2 truly unseen test sessions. **They must be recorded on a different day from the training data (Tue 27 Oct) and in a different place.**
+## Phase 4 — Held-Out Test Partition
+**Goal:** a fixed, disjoint evaluation subset of the existing independent recordings, selected before feature extraction or model fitting.
 
-**Why this design:**
-- It matches the rubric's "2 test files".
-- It exercises the transition matrix.
-- It produces the decoded-sequence plot the brief asks for.
-- It gives ~48 test windows per activity.
-- A new day and place test generalisation honestly.
+**Revised decision (29 Oct)**
+The participant intended some of the 52 clips for testing. Use a recording-level
+holdout: 44 train and 8 test, with 11/2 recordings per activity. This supersedes
+the original two new continuous sessions, different-day/place and lower-rate test
+requirements, which were extra design choices. The rubric's test evaluation is
+now supplied by eight held-out single-activity files. Report the narrower scope
+and the fact that all clips had already undergone quality inspection/cropping.
 
 **Tasks**
-- [ ] 2 sessions, **~100 s each, all 4 activities at ~25 s each**. Use activity orders that differ from the training sessions and from each other.
-- [ ] Same protocol as the training sessions: sync taps, timer schedule, webcam footage, segment table.
-- [ ] Record **test session 2 with the app on the 50 Hz setting** (delivers 29.2 Hz), so harmonisation is demonstrated on a genuinely different rate. **Set it back to 100 Hz afterwards.**
-- [ ] Run `python scripts/redact_metadata.py data/raw/test` before committing.
-- [ ] Process both with the **unchanged** Phase 3 pipeline. Save them to `data/processed/test/` and update `metadata.csv`.
+- [x] Select two clips per activity once using seed 42; freeze membership and raw hashes in `data/split_manifest.csv`.
+- [x] Keep all original recordings intact and preserve their labels/timestamps.
+- [x] Save 44 clips under `data/processed/train/clips/` and 8 under `data/processed/test/`; remove held-out copies from training outputs.
+- [x] Process both splits with the unchanged 10 Hz / 25 Hz Phase 3 functions and frozen crop intervals.
+- [x] Update metadata, quality summaries and notebook with actual split, dates, rates and limitations.
+- [x] Add source/provenance, duplicate-recording, output membership and sequence-separation checks.
+- [x] Provide explicit train/test sequence loaders; all learned fitting/tuning is restricted to train in subsequent phases.
 
-**Commits**
-1. `data: add raw test sessions and segment labels`
-2. `data: add processed test sessions`
-3. `data: update metadata with test recordings`
+**Checkpoint 4**
+- [x] 44 train and 8 test files; exactly 11/2 per activity, all four activities represented.
+- [x] No duplicate original recording crosses the split; unlabelled training blocks do not overlap held-out acquisition times.
+- [x] Each test file has its original single-activity label, finite data, 5–10 s duration and exact 25 Hz spacing.
+- [x] The 52-file/90-second requirements are checked on the collected dataset, not claimed for training alone.
+- [x] No model/learned preprocessing was fitted before the split; previous quality inspection is disclosed. No evaluation results have been used for tuning.
+- [x] The notebook runs top-to-bottom and the preprocessing/split regression checks pass.
 
-**⏸ Checkpoint 4**
-- [ ] Test recordings are dated after all training recordings, and the location type differs.
-- [ ] Each test session contains all 4 activities; labels line up with the signal.
-- [ ] The test files have not been looked at for tuning; only the label alignment was checked.
+**Scope limits:** existing single-person/device/indoor collection, shared collection
+days, no unseen lower-rate test, and no real cross-activity test transitions.
+Do not concatenate clips into artificial sequences. Video framing compliance
+remains open independently. See `docs/phase4_test_data.md`.
 
 ---
 
 ## Phase 5 — Windowing, Feature Extraction & Normalisation
-**Goal:** a Z-scored feature matrix for training and test.
+**Goal:** separate Z-scored feature sequences for the 44 training and 8 held-out test clips (plus optional unlabelled training blocks).
 
 **Windowing:** **2.0 s = 50 samples at 25 Hz, hop 1.0 s.** The window is defined in seconds and converted with `fs × seconds`.
 - Walking runs at ~1.6–2 steps/s and jumping at ~1.5–2.5 jumps/s, so a window covers ≥3 cycles.
 - FFT resolution 1/T = 0.5 Hz.
-- Expect ~175 training windows per activity.
+- Compute actual training/test window counts from the frozen split; keep each recording as a separate sequence.
 - A window takes the majority label of its samples.
 
 **Features (~12–14 per window):**
@@ -326,7 +334,7 @@ FFT details: remove the mean, apply a Hann window, use `np.fft.rfft`, and skip t
 - [ ] Time-domain features (1–10).
 - [ ] FFT features (11–14).
 - [ ] `zscore_fit()` / `zscore_transform()`.
-- [ ] Per-class box plots and a feature-correlation heatmap; drop any feature with |r| > 0.95 against another (keep D ≤ ~14).
+- [ ] Training-only per-class box plots and a feature-correlation heatmap; drop any feature with |r| > 0.95 against another (keep D ≤ ~14).
 
 **Commits**
 1. `feat(notebook): add sliding-window segmentation`
@@ -411,13 +419,13 @@ class GaussianHMM:
 **Goal:** a trained model evaluated on the unseen test sessions, plus every figure for the results section.
 
 **Training strategy**
-1. Supervised emission initialisation from labelled clip windows. Clips supply persistence observations; cross-activity transitions use an explicit nonzero prior, because session labels are unverified. Do not count cross-transitions from approximate labels.
+1. Supervised emission initialisation from the 44 labelled training clips only. Clips supply persistence observations; cross-activity transitions use an explicit nonzero prior, because session labels are unverified. Do not count cross-transitions from approximate labels.
 2. Baum–Welch refinement over training sequences, optionally including recovered **unlabelled** session blocks. Keep every clip/block as its own sequence and never count transitions across file or gap boundaries. Fit preprocessing statistics using training data only; document the session grip difference.
 3. State-to-label mapping check (Hungarian on the training confusion matrix).
 4. Compare: **(a)** supervised only · **(b)** supervised + Baum–Welch · **(c)** per-window Gaussian classifier with no transitions (baseline). Baum–Welch maximises likelihood, not accuracy, so report whichever result happens and explain it.
 
 **Evaluation**
-- Decode both test sessions with Viterbi and pool the windows into a 4×4 confusion matrix (per-session numbers go in the notebook).
+- Decode all eight held-out clips independently with Viterbi and pool the windows into a 4×4 confusion matrix (per-clip numbers go in the notebook).
 - Sensitivity = TP/(TP+FN); Specificity = TN/(TN+FP); per-row accuracy = (TP+TN)/N. Implement these in numpy.
 
 | State (Activity) | Number of Samples (windows) | Sensitivity | Specificity | Overall Accuracy |
@@ -429,12 +437,12 @@ class GaussianHMM:
 | **Overall** | total | macro avg | macro avg | correct / total |
 
   The footnote defines each formula and notes that one-vs-rest accuracy is inflated by true negatives, which is why the Overall row and the confusion matrix are the headline results.
-- Generalisation: compare training accuracy with test accuracy; count errors within ±1 window of a transition vs errors inside a steady activity; discuss the effect of the new day, place, and (if done) rate.
+- Generalisation: compare training accuracy with test accuracy; report per-clip errors and discuss shared collection conditions. True test cross-activity transitions, a new day/place and a lower-rate unseen recording are not evaluated by this split.
 
 **Report figures** (multi-panel, exported at 150–200 dpi to `figures/`)
 - **Fig. 2:** transition-matrix heatmap (annotated) + emission-means heatmap (states × features).
 - **Fig. 3:** test confusion matrix + Baum–Welch LL convergence curve.
-- **Fig. 4:** decoded timelines (true vs predicted above |a|) for both test sessions.
+- **Fig. 4:** separate representative held-out clip timelines (true vs predicted above |a|). Never join independent clips to simulate transitions.
 - Notebook only: A before vs after Baum–Welch; Gaussian curves per state for 2–3 key features.
 
 **Tasks** (notebook Section 7 "Training" + Section 8 "Evaluation")
@@ -511,7 +519,7 @@ class GaussianHMM:
 
 **⏸ Checkpoint 9 — Final Submission Checklist**
 - [ ] ≥50 labelled clips (52 recorded; 5–10 s, timestamp column); ≥90 s per activity. Optional unlabelled recovered blocks are independent sequences, not verified session labels
-- [ ] 2 unseen continuous test sessions (new day and place) with segment labels
+- [ ] 8 held-out original clips (2 per activity), fixed whole-recording split, original labels, and same-collection/quality-inspection limitations disclosed
 - [ ] 4 videos: full body, face visible, well lit; links tested in incognito
 - [ ] Sampling-rate table, harmonisation explanation, window justification
 - [ ] ≥3 time-domain + ≥1 FFT features, each justified; Z-score fitted on train only
