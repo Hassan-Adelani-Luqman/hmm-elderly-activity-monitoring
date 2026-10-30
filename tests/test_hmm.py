@@ -3,6 +3,7 @@
 import unittest
 import numpy as np
 from scripts.hmm import GaussianHMM, logsumexp
+from scripts.verify_hmm import exact_verification
 
 
 def toy_model():
@@ -10,6 +11,11 @@ def toy_model():
 
 
 class InferenceTests(unittest.TestCase):
+    def test_all_paths_likelihood_viterbi_posteriors_and_exact_em_step(self):
+        result = exact_verification()
+        self.assertEqual(result['paths_enumerated'], 64)
+        self.assertTrue(result['exact_em_step_passed'])
+
     def test_viterbi_persistence_backtracking_and_ties(self):
         m = GaussianHMM(2, 1).set_parameters([.99, .01], [[.999, .001], [.001, .999]], [[0], [2]], [[1], [1]])
         X = np.array([[0.], [2.], [0.]])
