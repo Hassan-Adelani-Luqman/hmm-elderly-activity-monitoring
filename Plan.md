@@ -9,6 +9,19 @@ The plan is split into **10 phases (0–9)**. Each phase ends with a **⏸ Verif
 
 ---
 
+## Current status — corrected 29 Oct 2026
+
+- **Phase 1:** pilot conclusions verified; jitter wording corrected to ≤0.315 ms for the pilots only.
+- **Phase 2:** 52 clips and two incomplete session exports exist. All four links are received in the Git-ignored `videos.txt`. Unauthenticated YouTube metadata and previews are accessible (14–45 s total duration). Preview review found full-body framing issues in all four videos and absent face framing during the still demonstration; compliance remains open.
+- **Phase 3:** corrected preprocessing, all-clip validation, metadata, figures and quality reports. The 52 clips retain 5–10 s each and ≥90 s per activity. Session gaps are never interpolated across.
+- **No-re-recording decision:** the participant has no session footage or precise timer records; the approximate 15 s schedule does not verify activity boundaries. Keep original labels only as provisional diagnostic annotations. Recover four independent **unlabelled** session blocks, with original timestamps and recorded orientation. Use labelled clips for supervised initialisation and an explicit transition prior; optionally refine with Baum–Welch on unlabelled blocks later. Two labelled training sessions were a design choice and are no longer a completion requirement. Two unseen **test** files remain required.
+- **Remaining phase 1–3 evidence:** resolve the video framing findings, verify active phone logging and the matching recordings, and perform a final signed-out playback check. See `docs/video_review.md`. See `docs/collection_completion.md` and `docs/video_checklist.csv`.
+- Generated evidence: `data/quality/status.json`, `sampling.csv`, `gaps.csv`, `clip_intervals.csv`, `unlabelled_sequences.csv`, and the executed notebook. `training_ready` certifies the revised clip dataset only; it does not certify videos or session ground truth.
+
+The original timeline and commit lists below are historical planning targets, not evidence that a task or checkpoint passed. The revisions in this status section and A1 row 17 supersede the original requirement for labelled training transitions.
+
+---
+
 ## Part A — Reference
 
 ### A1. Decisions Log (settled 24 Oct 2026)
@@ -16,7 +29,7 @@ The plan is split into **10 phases (0–9)**. Each phase ends with a **⏸ Verif
 | # | Topic | Decision |
 |---|---|---|
 | 1 | Group vs individual | **Individual.** First person; one participant |
-| 2 | Dataset size | **52 single-activity clips (13 per activity)**, giving ≥50 files and ~130 s per activity. Plus 2 continuous training sessions so the model sees transitions |
+| 2 | Dataset size | **52 single-activity clips (13 per activity)**, giving ≥50 files and ≥90 s per activity after reviewed cropping. Four independent unlabelled blocks are recovered from the two incomplete training session exports (row 17) |
 | 3 | Devices | **One Android phone** (Infinix X6855, Android 36, Sensor Logger 1.68). Two real rates: test session 2 is recorded at the lower setting. Everything is harmonised to **25 Hz** (see row 15) |
 | 4 | Test data | **2 continuous multi-activity sessions**, recorded on a different day and in a different place |
 | 5 | Submission | `.docx` upload with the GitHub link on page 1; report copy also committed to the repo |
@@ -29,8 +42,9 @@ The plan is split into **10 phases (0–9)**. Each phase ends with a **⏸ Verif
 | 12 | Repo | Public. Videos hosted externally, not committed. No location or GPS data |
 | 13 | Commits | Incremental conventional commits; **no AI co-author or attribution trailers** |
 | 14 | Streams *(pilot, 25 Oct)* | **acc = `TotalAcceleration.csv`** (includes gravity, m/s²); **gyro = `Gyroscope.csv`** (rad/s). The app's `Accelerometer.csv` has gravity removed and is not used. Gravity axis: flat → **z ≈ 9.8**; waist grip → **y ≈ 9.7** (z ≈ 1.3), so still vs standing is separable |
-| 15 | Sampling rate *(pilot, 25 Oct)* | App setting 100 Hz → **delivers 58.4 Hz**; setting 50 Hz → **delivers 29.2 Hz**. Jitter σ ≤ 0.3 ms, no dropped samples; acc and gyro share **no** timestamps. Training data + test session 1 use the 100 Hz setting; test session 2 uses the 50 Hz setting. **Harmonise to 25 Hz**: anti-alias filter + downsampling, never upsampling |
+| 15 | Sampling rate *(pilot, 25 Oct)* | App setting 100 Hz → **delivers 58.4 Hz**; setting 50 Hz → **delivers 29.2 Hz**. Pilot jitter σ ≤ 0.315 ms, no dropped intervals; acc and gyro share **no** timestamps. Training data + test session 1 use the 100 Hz setting; test session 2 uses the 50 Hz setting. **Harmonise to 25 Hz**: anti-alias filter + downsampling, never upsampling |
 | 16 | Privacy | `device id` in every `Metadata.csv` is redacted with `scripts/redact_metadata.py` before any raw-data commit |
+| 17 | Recovery without re-recording *(29 Oct)* | Split sessions at the union of both sensors’ gaps before filtering; discard short blocks, trim 1 s at block ends, preserve recorded orientation and original time. Export surviving blocks **without labels**. Existing segment times are approximate and cannot be independently verified. Labelled clips support supervised emissions; cross-activity transitions initially use an explicit prior. Optional EM treats each recovered block as a separate sequence. |
 
 ### A2. Rubric → Phase Map
 
@@ -61,9 +75,9 @@ hmm-elderly-activity-monitoring/
 │   │   ├── sessions/train_session_0N/
 │   │   └── test/test_session_0N/
 │   ├── processed/
-│   │   ├── train/clips/         # standing_01.csv … still_13.csv (52 files)
+│   │   ├── train/clips/         # 52 clips: 13 per activity
 │   │   ├── train/sessions/      # train_session_01.csv, train_session_02.csv
-│   │   └── test/                # test_session_01.csv, test_session_02.csv
+│   │   └── test/                # future unseen test CSVs
 │   ├── labels/                  # session segment tables: start_s, end_s, activity
 │   └── metadata.csv             # file, split, activity, configured_hz, measured_acc_hz,
 │                                #   measured_gyro_hz, duration_s, date, location_type
@@ -74,7 +88,8 @@ hmm-elderly-activity-monitoring/
     └── HMM_Activity_Recognition_Report.docx  (+ PDF)
 ```
 
-**Processed CSV schema:** `timestamp_ns, seconds_elapsed, acc_x, acc_y, acc_z, gyro_x, gyro_y, gyro_z, activity`
+**Labelled processed CSV schema:** `timestamp_ns, seconds_elapsed, acc_x, acc_y, acc_z, gyro_x, gyro_y, gyro_z, activity`.
+`timestamp_ns` is integer Unix epoch nanoseconds; `seconds_elapsed` is relative to the original recording start, even after cropping. The two representations share that origin. Plotting may subtract the selected interval start. Unlabelled session files in `data/processed/unlabelled/sessions/` omit `activity`; `data/quality/unlabelled_sequences.csv` records their boundaries and provenance.
 
 ### A4. Commit & Checkpoint Rules
 
@@ -154,16 +169,16 @@ hmm-elderly-activity-monitoring/
 4. `docs: record pilot findings in plan and README`
 
 **⏸ Checkpoint 1**
-- [ ] The pilots load with no errors; units are m/s² and rad/s.
-- [ ] Gravity question answered; feature 1–3 source decided (`TotalAcceleration` axis means).
-- [ ] Measured rates noted; sampling-rate adjustability known (100 Hz → 58.4 Hz; 50 Hz → 29.2 Hz).
-- [ ] No location files, and no device id in any committed `Metadata.csv`.
-- [ ] **App set back to the 100 Hz setting** for Phase 2.
+- [x] The pilots load with no errors; units are m/s² and rad/s.
+- [x] Gravity question answered; feature 1–3 source decided (`TotalAcceleration` axis means).
+- [x] Measured rates noted; sampling-rate adjustability known (100 Hz → 58.4 Hz; 50 Hz → 29.2 Hz).
+- [x] No location files, and no device id in any committed `Metadata.csv`.
+- [x] **App set back to the 100 Hz setting** for Phase 2.
 
 ---
 
 ## Phase 2 — Training Data Collection & Videos
-**Goal:** all training recordings and the 4 mandatory videos.
+**Goal:** all training recordings and the 4 mandatory videos. Links, metadata duration and frame previews have been checked. Full-body framing has not passed; full playback and active logging remain unverified. The revised session recovery strategy is in A1 row 17.
 
 **Recording protocol**
 
@@ -175,24 +190,23 @@ hmm-elderly-activity-monitoring/
 | **Still** | Flat on a table, screen up | Hands off; nobody touches the table |
 
 **Tasks**
-- [ ] **Videos first** (mandatory; missing any one scores zero):
+- [ ] **Video compliance needs attention** (links received; full-body framing fails in reviewed previews; missing any one at submission scores zero):
   - 4 videos, ≥5 s each, one per activity.
   - **Entire body in frame, face clearly visible, front lighting.**
   - Use the **laptop webcam** 2–3 m away, or a friend with any camera.
   - Still video: show yourself placing the phone on the table and standing beside it.
   - Film each video **during a real clip** and note the matching file (e.g. "Video 2 ↔ `walking_03`").
-- [ ] **52 clips:** 13 per activity, each recorded for ~12 s (trimmed to ~10 s in Phase 3).
+- [x] **52 clips:** 13 per activity; reviewed crops now span 5–10 s and exceed 90 s per activity in total.
   - Batch by activity, in 2 sittings, with slight variation in context (room, time, footwear).
   - **Never change the phone placement.**
-- [ ] **2 training sessions**, ~2 min each, for transitions:
-  - Each activity appears twice for ~15 s, in a realistic order, e.g. `still → standing → walking → standing → jumping → standing → walking → still`.
-  - Start with **3 sharp taps** on the phone (sync marker).
-  - Follow a **laptop interval timer** with audio cues, and film with the webcam to get exact boundaries.
-  - Write the segment table (`start_s, end_s, activity`) right after each session.
-- [ ] Check that the app is on the **100 Hz setting** (delivers 58.4 Hz) before every sitting.
-- [ ] Unzip every export into the `data/raw/...` layout from A3, then run `python scripts/redact_metadata.py data/raw` before committing.
-- [ ] Fill in `data/metadata.csv` for every recording.
-- [ ] Upload the videos to **YouTube (unlisted)** or **Google Drive (Anyone with link → Viewer)**. Keep the links in a private note for the report; they are not committed.
+- [x] **Two raw training sessions retained for provenance; recover continuous portions without labels.**
+  - Original exports have sensor outages; use the four independent recovered blocks only as optional unlabelled sequences.
+  - The old segment table remains approximate and is excluded from supervised transitions and accuracy metrics.
+  - Exact timing evidence is unavailable; no boundary is invented or certified from the rough 15-second schedule.
+- [x] Check that the app is on the **100 Hz setting** (delivers 58.4 Hz) before every sitting.
+- [x] Unzip every export into the `data/raw/...` layout from A3, then run `python scripts/redact_metadata.py data/raw` before committing.
+- [x] Fill in `data/metadata.csv` for every recording.
+- [x] Four videos hosted on YouTube; links received in Git-ignored `videos.txt` for the report. Unauthenticated metadata and preview access succeeded; full playback and rubric compliance remain separate checks.
 
 **Commits** (one per activity keeps the history readable)
 1. `data: add raw standing clips`
@@ -203,11 +217,11 @@ hmm-elderly-activity-monitoring/
 6. `data: add recording metadata`
 
 **⏸ Checkpoint 2**
-- [ ] 52 clip folders present (13 per activity), each with Accelerometer, Gyroscope and Gravity CSVs.
-- [ ] 2 session folders plus their segment tables.
-- [ ] `metadata.csv` has one row per recording.
+- [x] 52 clip folders present (13 per activity), each with Accelerometer, Gyroscope and Gravity CSVs.
+- [x] Two raw session folders and the original approximate annotations retained; four independently processed unlabelled blocks exported under the revised strategy. No verified session ground truth is claimed.
+- [x] `metadata.csv` has one row per recording.
 - [ ] **All 4 video links play in an incognito window**: full body, face visible, well lit.
-- [ ] No video, zip, or location file is tracked (`git ls-files | grep -Ei 'mp4|mov|zip|location'` returns nothing).
+- [x] No video, zip, or location file is tracked (`git ls-files | grep -Ei 'mp4|mov|zip|location'` returns nothing).
 
 ---
 
@@ -215,19 +229,19 @@ hmm-elderly-activity-monitoring/
 **Goal:** clean, labelled, uniformly sampled training CSVs, plus the raw-data figure.
 
 **Tasks** (notebook Section 2 "Pre-processing")
-- [ ] **Quality checks:** measured rate per sensor and file; flag gaps (Δt > 3 × median); drop duplicate timestamps.
-- [ ] **Harmonisation:**
+- [x] **Quality checks:** measure every sensor/file; report all gaps (Δt > 3 × median), jitter and duplicate removal; reject conflicting duplicates/non-finite data. Split sessions at either sensor’s gaps before filtering; treat blocks independently.
+- [x] **Harmonisation:**
   - Why it's needed (from the pilot): recordings exist at **two real rates** (58.4 Hz and 29.2 Hz, from the 100 and 50 Hz settings), and accelerometer and gyroscope samples are taken at **different instants** (no shared timestamps).
-  - Step 1: an **anti-alias low-pass filter** at each stream's native rate: zero-phase Butterworth (`scipy.signal.butter` + `filtfilt`), order 4, **cutoff 10 Hz** (below the new 12.5 Hz Nyquist).
-  - Step 2: build a **uniform 25 Hz grid** over the time range both sensors cover, and linearly interpolate all six axes onto it (`np.interp`).
+  - Step 1: an **anti-alias low-pass filter** at each stream's native rate: zero-phase Butterworth (`scipy.signal.butter` + `sosfiltfilt`, second-order sections), order 4, **cutoff 10 Hz** (below the new 12.5 Hz Nyquist).
+  - Step 2: build a **uniform 25 Hz grid** over the time range both sensors cover, and linearly interpolate all six filtered native axes directly onto it **once** (`np.interp`). Use integer nanosecond steps to prevent rounding drift.
   - Why 25 Hz: it is just below the lowest delivered rate (29.2 Hz), so every recording is **downsampled and nothing is upsampled**. Interpolating up would invent no content above the source Nyquist, and test FFT features would no longer match training. The 12.5 Hz Nyquist still covers the walking and jumping fundamentals (~1.5–2.5 Hz) and their main harmonics. Window sizes in samples become identical for all recordings.
-- [ ] **Cleaning:** trim 1 s from each end of each clip; assert the cleaned length is 5–10 s; flag bad clips and re-record them.
-- [ ] **Labelling:** add the `activity` column. Sessions get per-row labels expanded from their segment tables. Refine boundaries using the sync taps and the |a| plot.
-- [ ] Save to `data/processed/train/...` using the A3 schema.
-- [ ] **Figures:**
-  - **Fig. 1 (report):** 4 panels, one clip per activity, |a| and |ω| against time.
+- [x] **Cleaning:** exclude at least 1 s at both ends, apply signal-reviewed crop intervals bound to raw-file hashes, cap at 10 s and enforce 5–10 s on every clip. Further remove obvious quiet lead-ins/handling artifacts. No re-recording was needed for the 52 clips.
+- [x] **Labelling:** retain original clip activity labels. Export recovered session blocks **without** labels; approximate session timings are not ground truth. Strict label validation exists for future independently verified sessions. No inferred labels enter training.
+- [x] Save labelled clips to `data/processed/train/clips/`; unlabelled blocks to `data/processed/unlabelled/sessions/`. Remove obsolete unsafe derived session CSVs; retain raw data.
+- [x] **Figures:**
+  - **Fig. 1 (report):** 4 panels of actual raw measurements over the retained intervals, one clip per activity, |a| and |ω| with separate labelled scales.
   - Notebook only: all 6 axes per activity; Δt histogram before and after resampling; seconds-per-activity bar chart with a 90 s line.
-- [ ] Sampling-rate summary table (configured vs measured vs harmonised) for the report.
+- [x] Sampling-rate summary table (configured vs measured vs harmonised) for the report.
 
 **Commits**
 1. `feat(notebook): add sampling quality checks`
@@ -237,11 +251,11 @@ hmm-elderly-activity-monitoring/
 5. `feat(notebook): add raw signal and sampling visualisations`
 
 **⏸ Checkpoint 3**
-- [ ] 52 processed clips, each 5–10 s, with no NaNs and Δt = 0.04 s (25 Hz) throughout.
-- [ ] Every activity totals ≥90 s (bar chart).
-- [ ] Session labels line up with the visible signal changes.
-- [ ] Fig. 1 is readable at report size and saved to `figures/`.
-- [ ] The notebook runs top-to-bottom up to this point.
+- [x] 52 processed clips, each 5–10 s, with no NaNs and Δt = 0.04 s (25 Hz) throughout.
+- [x] Every activity totals ≥90 s (bar chart).
+- [x] Under the revised strategy, session labels are not asserted as truth. Raw diagnostics and the recoverable-block manifest document the uncertainty; no gaps are crossed and no labels are exported with those blocks.
+- [x] Fig. 1 is readable at report size and saved to `figures/`.
+- [x] The notebook runs top-to-bottom up to this point.
 
 ---
 
@@ -363,7 +377,7 @@ class GaussianHMM:
     def predict_proba(self, X): ...                 # posteriors γ
 ```
 
-**Verification** (notebook Section 5 "Model verification", all as assertions). Why: Implementation is worth 15 points; from-scratch HMM bugs are usually silent; and exact ground truth is stronger evidence than agreeing with a library.
+**Verification** (notebook Section 6 "Model verification", all as assertions). Why: Implementation is worth 15 points; from-scratch HMM bugs are usually silent; and exact ground truth is stronger evidence than agreeing with a library.
 1. **Brute-force likelihood:** for N = 2, T = 6 (64 paths), summing over every path must equal `exp(score)`.
 2. **Brute-force Viterbi:** the argmax over all 64 paths must equal the Viterbi path.
 3. **Forward–backward consistency:** P(X) from α must equal P(X) from β; each γ_t and ξ_t must sum to 1.
@@ -371,7 +385,7 @@ class GaussianHMM:
 5. **Synthetic recovery:** sample from a known 3-state HMM, fit from a random start, match states, and check A and μ are within tolerance.
 6. **Invariants:** rows of A and π sum to 1, and every variance is ≥ the floor, after every M-step.
 
-**Tasks** (notebook Section 4 "HMM implementation" + Section 5)
+**Tasks** (notebook Section 5 "HMM implementation" + Section 6)
 - [ ] Emissions + scaled forward/backward + `score`.
 - [ ] Viterbi.
 - [ ] Baum–Welch for multiple sequences, with ΔLL < 1e-4 stopping and LL history.
@@ -397,8 +411,8 @@ class GaussianHMM:
 **Goal:** a trained model evaluated on the unseen test sessions, plus every figure for the results section.
 
 **Training strategy**
-1. Supervised initialisation from the labelled training windows (clips give self-transitions; sessions give cross-transitions).
-2. Baum–Welch refinement over all training sequences.
+1. Supervised emission initialisation from labelled clip windows. Clips supply persistence observations; cross-activity transitions use an explicit nonzero prior, because session labels are unverified. Do not count cross-transitions from approximate labels.
+2. Baum–Welch refinement over training sequences, optionally including recovered **unlabelled** session blocks. Keep every clip/block as its own sequence and never count transitions across file or gap boundaries. Fit preprocessing statistics using training data only; document the session grip difference.
 3. State-to-label mapping check (Hungarian on the training confusion matrix).
 4. Compare: **(a)** supervised only · **(b)** supervised + Baum–Welch · **(c)** per-window Gaussian classifier with no transitions (baseline). Baum–Welch maximises likelihood, not accuracy, so report whichever result happens and explain it.
 
@@ -423,7 +437,7 @@ class GaussianHMM:
 - **Fig. 4:** decoded timelines (true vs predicted above |a|) for both test sessions.
 - Notebook only: A before vs after Baum–Welch; Gaussian curves per state for 2–3 key features.
 
-**Tasks** (notebook Section 6 "Training" + Section 7 "Evaluation")
+**Tasks** (notebook Section 7 "Training" + Section 8 "Evaluation")
 - [ ] Train models (a), (b), (c); mapping check.
 - [ ] Metrics functions + results table.
 - [ ] Figs. 2–4 + the notebook-only plots.
@@ -460,7 +474,7 @@ class GaussianHMM:
 **Discussion points**
 - **Hardest pair:** likely still vs standing (orientation features separate them). **Easiest:** jumping (very large energy and peak-to-peak values).
 - **Transitions:** a strong diagonal shows that activities persist. Still ↔ standing is the gateway (you pick the phone up or put it down while standing); still → jumping should be near zero. In the use case, impact → long still would be an alert pattern.
-- **Noise and sampling:** the delivered rate differed from the configured rate (58.4 vs 100 Hz); acc and gyro are sampled at different instants; gyroscope drift; interpolation; aliasing; why 25 Hz is enough and what is lost above 12.5 Hz (sharpness of impacts); whether test session 2 (29.2 Hz) performed worse.
+- **Noise and sampling:** the delivered rate differed from the configured rate (58.4 vs 100 Hz); acc and gyro are sampled at different instants; gyroscope drift; interpolation; aliasing; why 25 Hz is enough and what is lost above 12.5 Hz (sharpness of impacts); the lower-rate pilot demonstrates processing compatibility, but no unseen lower-rate generalisation was tested.
 - **Improvements:** more participants and devices; pocket or belt placement (more realistic for older adults); barometer for fall detection; GMM emissions; a duration-aware HSMM.
 
 **Tasks**
@@ -496,7 +510,7 @@ class GaussianHMM:
 3. Tag: `git tag -a v1.0 -m "Formative 2 submission"`
 
 **⏸ Checkpoint 9 — Final Submission Checklist**
-- [ ] ≥50 labelled clips (52 recorded; 5–10 s, timestamp column) + 2 training sessions; ≥90 s per activity
+- [ ] ≥50 labelled clips (52 recorded; 5–10 s, timestamp column); ≥90 s per activity. Optional unlabelled recovered blocks are independent sequences, not verified session labels
 - [ ] 2 unseen continuous test sessions (new day and place) with segment labels
 - [ ] 4 videos: full body, face visible, well lit; links tested in incognito
 - [ ] Sampling-rate table, harmonisation explanation, window justification
@@ -516,8 +530,8 @@ class GaussianHMM:
 |---|---|---|
 | Still vs standing confusion | Gravity-orientation features; Gravity stream enabled | 1, 5 |
 | A few clips fail cleaning, dropping the count below 50 | 52 recorded (buffer of 2); re-record rejected clips straight away | 3 |
-| Trivial transition matrix | Training sessions + Laplace smoothing | 2, 6 |
-| Mislabelled session boundaries | Sync taps + timer + webcam; majority-label windows | 2, 4 |
+| Limited labelled transitions | Explicit persistence/exit prior; optional EM over independent unlabelled blocks; report the limitation | 2, 6 |
+| Unverified training-session boundaries | Never use approximate labels as truth; recovered blocks are unlabelled. Record exact evidence for future test data | 2, 4 |
 | Underflow / singular variance | Scaled forward–backward; variance floor | 6 |
 | Baum–Welch label switching | Supervised initialisation + Hungarian check | 7 |
 | Leakage | Separate test day and place; Z-score fitted on train only; no tuning on test | 4, 5, 7 |

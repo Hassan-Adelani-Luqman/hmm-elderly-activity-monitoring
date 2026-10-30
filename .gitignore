@@ -10,6 +10,8 @@ __pycache__/
 *.avi
 *.mkv
 *.zip
+# Private video-link note; the final report carries the evidence links.
+/videos.txt
 
 # Location data must never be committed (public repo)
 **/Location*.csv

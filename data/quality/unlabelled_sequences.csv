@@ -1,0 +1,5 @@
+sequence,recording,start_s,end_s,duration_s,n_samples,source_sha256,label_status
+train_session_01_part01,train_session_01,1.131117,43.931117,42.8,1071,bc523de5635f7944705fd9b7c9354302a1f998b5d143ffe643f76a8dfcfd1bb5,unverified; no labels exported
+train_session_01_part02,train_session_01,50.8364527,78.5964527,27.76,695,bc523de5635f7944705fd9b7c9354302a1f998b5d143ffe643f76a8dfcfd1bb5,unverified; no labels exported
+train_session_01_part03,train_session_01,87.2066563,136.8866563,49.68,1243,bc523de5635f7944705fd9b7c9354302a1f998b5d143ffe643f76a8dfcfd1bb5,unverified; no labels exported
+train_session_02_part01,train_session_02,1.1336068,24.3736068,23.24,582,16ffdc7ec3b61c3adabad31c0b38a88298a7b302f9d0b2351d35c56f43a14fac,unverified; no labels exported
