@@ -10,6 +10,15 @@ def toy_model():
 
 
 class InferenceTests(unittest.TestCase):
+    def test_viterbi_persistence_backtracking_and_ties(self):
+        m = GaussianHMM(2, 1).set_parameters([.99, .01], [[.999, .001], [.001, .999]], [[0], [2]], [[1], [1]])
+        X = np.array([[0.], [2.], [0.]])
+        np.testing.assert_array_equal(m.predict_viterbi(X), [0, 0, 0])
+        self.assertEqual(np.argmax(m._log_emission(X), axis=1)[1], 1)
+        np.testing.assert_array_equal(m.predict_viterbi([[0.]]), [0])
+        m.set_parameters([.5, .5], np.full((2, 2), .5), [[0], [0]], [[1], [1]])
+        np.testing.assert_array_equal(m.predict_viterbi(X), [0, 0, 0])
+
     def test_gaussian_constants_and_positive_log_density(self):
         m = GaussianHMM(1, 2).set_parameters([1], [[1]], [[0, 1]], [[.001, .004]])
         expected = -np.log(2*np.pi) - .5*np.log(.001*.004)

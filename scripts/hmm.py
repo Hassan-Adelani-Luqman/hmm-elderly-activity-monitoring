@@ -149,3 +149,23 @@ class GaussianHMM:
     def predict_proba(self, X):
         """Return smoothed state posterior gamma(T,N) for one X(T,D) sequence."""
         return self._posteriors(X)[0]
+
+    def predict_viterbi(self, X):
+        """Return the most likely joint state path (T,) for X(T,D), in log space.
+
+        Backpointers select the whole path, not per-window posterior maxima.
+        Exact ties choose the lowest predecessor/final state index.
+        """
+        log_B = self._log_emission(X)
+        log_A = log_probabilities(self.A)
+        delta = log_probabilities(self.pi) + log_B[0]
+        back = np.zeros(log_B.shape, dtype=np.int64)
+        for t in range(1, len(log_B)):
+            candidates = delta[:, None] + log_A
+            back[t] = np.argmax(candidates, axis=0)
+            delta = candidates[back[t], np.arange(self.n_states)] + log_B[t]
+        path = np.empty(len(log_B), dtype=np.int64)
+        path[-1] = np.argmax(delta)
+        for t in range(len(log_B)-1, 0, -1):
+            path[t-1] = back[t, path[t]]
+        return path
