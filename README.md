@@ -1,34 +1,52 @@
 # HMM Elderly Activity Monitoring
 
-Human activity recognition from smartphone accelerometer and gyroscope data, with a Hidden Markov Model implemented from scratch in NumPy. The use case is elderly fall-risk and inactivity monitoring. The four activities are **still, standing, walking, jumping**. Phases 1–7 are implemented: collection inspection, preprocessing, a fixed split, features, training-only normalisation, HMM verification, activity-model training and held-out evaluation. Report assembly remains Phase 8. Jumping is an impact activity, not validated fall data.
+Human activity recognition from smartphone accelerometer and gyroscope data, using a Hidden Markov Model implemented from scratch in NumPy. The use case is elderly fall-risk and inactivity monitoring. The model infers four hidden activity states (**still, standing, walking, jumping**) from windowed time- and frequency-domain features, using Baum–Welch for training and Viterbi for decoding. Jumping stands in for an impact activity; it is not fall data.
 
-The revised collection uses 52 labelled clips (13 per activity), partitioned into **44 training and 8 test clips** (11/2 per activity), plus independent **unlabelled** blocks recovered from incomplete sessions. Approximate session labels are retained only for diagnostics. All four video links have been received and their metadata/previews are accessible without login. Preview inspection found full-body framing issues; video compliance remains open. See [video review](docs/video_review.md). See [collection status and remaining evidence](docs/collection_completion.md).
+**Report:** [report/HMM_Activity_Recognition_Report.pdf](report/HMM_Activity_Recognition_Report.pdf) (also as `.docx`)
+**Notebook:** [notebooks/hmm_activity_recognition.ipynb](notebooks/hmm_activity_recognition.ipynb)
 
-## Repository Structure
+## Results at a glance
+
+| Model | Held-out test windows correct |
+|---|---|
+| Supervised HMM | 64/65 (98.46%) |
+| **Baum–Welch, transition prior fixed (primary)** | **63/65 (96.92%)** |
+| Baum–Welch, free transitions (comparison) | 63/65 (96.92%) |
+| Independent Gaussian, no transitions (baseline) | 64/65 (98.46%) |
+
+- **Data:** 52 labelled single-activity clips (13 per activity, 5–10 s each, ≥ 90 s per activity), split by whole recording into **44 training and 8 test clips** (11/2 per activity, seed 42). Recorded with Sensor Logger on one Android phone.
+- **Sampling:** the phone delivers 58.4 Hz (app set to 100 Hz) or 29.2 Hz (set to 50 Hz), and the accelerometer and gyroscope never share timestamps. Every recording is low-pass filtered at 10 Hz and resampled to a common **25 Hz** grid, so nothing is upsampled.
+- **Features:** 2 s windows (50 samples) with a 1 s hop; 10 features (7 time-domain, 3 FFT), Z-scored with training statistics only.
+- **Transitions:** every training clip contains one activity, so free Baum–Welch makes still and jumping absorbing (probability 1). The primary model keeps the supervised Laplace transition prior fixed during EM; held-out predictions are identical for both variants.
+- **Continuous sessions:** two continuous recordings suffered sensor outages, leaving four unlabelled blocks. They are not used for training, only decoded to show predicted transitions (report Figure 4). The free-A model gets stuck in *jumping*; the primary model switches states but mislabels walking and standing recorded with a different grip.
+
+## Repository structure
 
 ```
-scripts/        preprocessing.py; splits.py; features.py; hmm.py; verify_hmm.py; train_activity.py;
-                evaluate_activity.py; activity_plots.py; redact_metadata.py
+notebooks/      hmm_activity_recognition.ipynb (the HMM class is defined in Section 5)
+scripts/        preprocessing.py, splits.py, features.py, hmm.py, verify_hmm.py,
+                train_activity.py, evaluate_activity.py, activity_plots.py,
+                build_report.py, redact_metadata.py
 data/
-  raw/          Sensor Logger exports (pilot, clips, sessions, test); only the device id is redacted
-  processed/    44 train/clips, 8 test clips; optional unlabelled/sessions
-  labels/       Original session annotations (currently approximate/unverified)
-  metadata.csv  One row per recording (activity, sampling rates, duration, date)
-  clip_intervals.csv  Reviewed signal-based crops bound to raw-file hashes
-  split_manifest.csv  Frozen train/test membership and source hashes (seed 42)
-  quality/      Sampling, gaps, crop/sequence manifests and current readiness
-  features/     Normalised per-sequence features, training fit parameters and audit tables
-  verification/ Synthetic HMM verification, source hashes and likelihood histories
-  models/       Frozen activity-model parameters, mappings and training provenance
-  evaluation/   Model comparison, per-window/clip/class results and confusion matrices
-notebooks/      hmm_activity_recognition.ipynb
+  raw/          Sensor Logger exports (pilot, clips, sessions); only the device id is redacted
+  processed/    25 Hz labelled CSVs: train/clips (44), test (8); unlabelled/sessions (4 blocks)
+  labels/       Approximate session schedule (not verified ground truth)
+  metadata.csv  One row per recording (activity, split, sampling rates, duration, date)
+  split_manifest.csv  Frozen train/test membership with source hashes
+  quality/      Sampling, gap, crop and readiness reports
+  features/     Normalised per-window features and the training-only transform
+  verification/ Exact and synthetic HMM verification evidence
+  models/       Trained model parameters, state mappings and likelihood histories
+  evaluation/   Predictions, metrics, confusion matrices and session decoding
 figures/        Figures exported from the notebook
-report/         Final report (.docx and .pdf)
-tests/          Numerical and data-integrity regression checks
-docs/           Collection completion notes and video verification checklist
+report/         Final report (.docx and .pdf) and its configuration
+tests/          Numerical, data-integrity and notebook-sync regression tests
+docs/           Phase notes and data-collection records
 ```
 
-## How to Run
+Processed CSVs use the schema `timestamp_ns, seconds_elapsed, acc_x, acc_y, acc_z, gyro_x, gyro_y, gyro_z, activity` (unlabelled blocks omit `activity`). `timestamp_ns` is Unix epoch nanoseconds; `seconds_elapsed` counts from the original recording start; consecutive rows are exactly 40 ms apart.
+
+## How to run
 
 ```bash
 python3 -m venv .venv
@@ -37,9 +55,9 @@ pip install -r requirements.txt
 jupyter notebook notebooks/hmm_activity_recognition.ipynb
 ```
 
-Run all cells from top to bottom. All paths are relative to the repository root.
+Run all cells from top to bottom (about 80 s). All paths are relative to the repository root, and re-running reproduces every model parameter and result exactly.
 
-To regenerate processed files and run the checks without Jupyter:
+To run the pipeline and checks without Jupyter:
 
 ```bash
 python scripts/preprocessing.py --require-complete
@@ -51,32 +69,13 @@ python scripts/activity_plots.py
 python -m unittest discover -s tests -v
 ```
 
-The pipeline rejects gaps for whole-recording processing. Its recovery path splits sessions before filtering and exports each valid block as a separate sequence without activity labels. Never join these files into one sequence or use approximate session labels for evaluation. Generated output folders are managed by the pipeline; obsolete derived CSVs are removed on rerun. Raw exports remain unchanged.
+To rebuild the report (needs `pip install -r requirements-report.txt`, LibreOffice for the PDF, and a local `videos.txt` with the four video links, which is not committed):
 
-Processed `timestamp_ns` values are Unix epoch nanoseconds. `seconds_elapsed` is measured from the original recording start, including after cropping; it does not reset to zero. All consecutive timestamps differ by exactly 40,000,000 ns (25 Hz). The labelled schema is `timestamp_ns, seconds_elapsed, acc_x, acc_y, acc_z, gyro_x, gyro_y, gyro_z, activity`; unlabelled blocks omit `activity`.
+```bash
+python scripts/build_report.py
+soffice --headless --convert-to pdf --outdir report report/HMM_Activity_Recognition_Report.docx
+```
 
-The strict command verifies all 52 collected clips, ≥90 s per activity across the collection, and the fixed 44/8 partition. It does not certify videos or session ground truth. Test clips come from the same collection and were already quality-inspected; no model or learned features were fitted before splitting. This evaluates held-out single-activity recognition, not a different day/place or real activity transitions. See [Phase 4 details](docs/phase4_test_data.md).
+## Scope
 
-For subsequent features/models, load `load_labelled_sequences(ROOT, "train")` or `load_labelled_sequences(ROOT, "test")` from `scripts.preprocessing`. Keep every file as a separate sequence. Fit scaling, select features and tune models using training data only.
-
-## Feature sequences
-
-Phase 5 uses 2 s windows with a 1 s hop. Training-only screening retains **10 features** (7 time-domain, 3 FFT). Population z-score statistics are fitted on the **338 windows from 44 labelled training clips** and applied unchanged to the **65 test windows** and **137 optional unlabelled windows**.
-
-Use `load_feature_sequences(ROOT, "train")`, `"test"`, or `"unlabelled"` from `scripts.features` for model-ready `X` matrices, labels and window metadata. Each recording remains a separate sequence. Feature order and fitted statistics are stored in `data/features/transform.json`. See [Phase 5 definitions, checks and limitations](docs/phase5_features.md).
-
-## HMM verification
-
-`GaussianHMM` in `scripts/hmm.py` implements Gaussian emissions, scaled log-space forward/backward, Viterbi, supervised initialisation and multi-sequence Baum–Welch. The notebook displays the implementation and mathematical verification in Sections 5–6.
-
-All six Phase 6 checks pass using exact enumeration and generated synthetic sequences. The recovery example converges in 7 EM iterations on the log-likelihood tolerance, with maximum transition/mean errors of 0.01421/0.03212. That verification phase uses synthetic data only. See [Phase 6 methods and verification](docs/phase6_hmm.md) and `data/verification/hmm.json`.
-
-## Activity evaluation
-
-The preselected Baum–Welch HMM scores **63/65 test windows (96.92%)**; the supervised-only HMM and independent Gaussian baseline each score **64/65 (98.46%)**. EM improves training likelihood but slightly reduces classification accuracy. All primary errors are standing windows predicted as walking in one clip.
-
-Training and state mapping use only 44 labelled clips. Testing uses eight independent held-out clips from the same collection; their 65 overlapping windows are not independent trials. No new-person/environment or real cross-activity transition performance is established. See [Phase 7 results and limitations](docs/phase7_results.md). Report Figures 2–4 and the executed notebook show the fixed model, comparisons and per-clip outcomes.
-
-## Report
-
-_Link to be added._
+This is a single-participant, single-device study. The test clips are held-out recordings from the same collection, so they measure recognition on new recordings rather than in a new environment, and the 65 test windows overlap and are not independent trials. Transition probabilities are a persistence prior rather than learned switching rates, and performance on real falls, other people or other phone placements is untested.

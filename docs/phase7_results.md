@@ -1,5 +1,14 @@
 # Phase 7 — activity training and held-out evaluation
 
+> **Update, 31 October 2026.** A final review found that free Baum–Welch made still
+> and jumping absorbing (A = 1.000), because every training clip contains one
+> activity. The primary model now keeps the supervised transition prior fixed
+> during EM (pi and emissions are still re-estimated): 7 updates, training LL
+> 654.82 → 664.10. The free-A model described below is kept as the comparison
+> `baum_welch_free_transitions`. Held-out predictions are identical (63/65), and
+> Figure 4 now decodes the unlabelled session blocks. Numbers below that describe
+> EM (8 updates, LL 674.29, absorbing rows) refer to the free-A comparison.
+
 Completed 30 October 2026. Notebook Sections 7–8 reproduce training, the fixed
 three-model comparison, the rubric metrics table, per-clip results, report
 Figures 2–4, and the notebook-only parameter plots.
@@ -146,8 +155,7 @@ orientation cue is protocol-specific. Jumping is an impact activity, not a
 validated fall class; this is not validated elderly monitoring. The held-out
 clips cannot test realistic cross-activity dynamics, duration models, or an
 impact-then-inactivity alert. Additional independent continuous recordings are
-needed for those claims. Video framing and playback evidence remain separate
-submission issues documented in `video_review.md`.
+needed for those claims.
 
 ## Reproduction and artifacts
 
