@@ -176,6 +176,8 @@ class GaussianHMM:
         This is maximum-likelihood EM with a constrained variance floor, without
         probability pseudocounts. Unoccupied states/transition rows retain their
         previous parameters. Each sequence contributes its own initial state.
+        When update_transitions_ is False, A is held fixed (a partial M-step that
+        still cannot decrease the likelihood).
         """
         weights = sum(gamma.sum(axis=0) for gamma, _, _ in posteriors)
         initial = sum(gamma[0] for gamma, _, _ in posteriors)
@@ -190,9 +192,10 @@ class GaussianHMM:
                       for X, (gamma, _, _) in zip(sequences, posteriors))
         variances[occupied] = np.maximum(squared[occupied] / weights[occupied, None], self.var_floor)
         A = self.A.copy()
-        row_counts = transitions.sum(axis=1)
-        active = row_counts > 0
-        A[active] = transitions[active] / row_counts[active, None]
+        if getattr(self, "update_transitions_", True):
+            row_counts = transitions.sum(axis=1)
+            active = row_counts > 0
+            A[active] = transitions[active] / row_counts[active, None]
         self.set_parameters(initial / initial.sum(), A, means, variances)
 
     def fit_supervised(self, X_list, y_list, transition_prior=1.0, initial_prior=1.0):
@@ -245,7 +248,7 @@ class GaussianHMM:
                 "A_row_sum_error": float(np.max(abs(self.A.sum(axis=1)-1))),
                 "minimum_variance": float(self.variances.min())}
 
-    def fit_baum_welch(self, X_list):
+    def fit_baum_welch(self, X_list, update_transitions=True):
         """Fit independent X_s(T_s,D) arrays from existing parameters; return self.
 
         history_ contains the initial total LL and each accepted update's LL.
@@ -253,9 +256,12 @@ class GaussianHMM:
         A meaningful decrease raises and restores the previous parameters. A
         tiny roundoff decrease is rolled back and reported as a numerical plateau.
         No labels, test data, smoothing counts or cross-file transitions enter EM.
+        update_transitions=False keeps A fixed and re-estimates pi and emissions
+        only; use it when the sequences carry no information about state changes.
         """
         sequences = self._sequences(X_list)
         self._validate_parameters()
+        self.update_transitions_ = bool(update_transitions)
         self.history_ = [self.score(sequences)]
         self.invariant_history_ = []
         self.converged_, self.n_iter_, self.stop_reason_ = False, 0, "max_iter"

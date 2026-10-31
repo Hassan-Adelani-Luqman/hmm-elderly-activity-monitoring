@@ -113,6 +113,19 @@ class EMTests(unittest.TestCase):
             self.assertLessEqual(row['pi_sum_error'], 1e-12)
             self.assertGreaterEqual(row['minimum_variance'], m.var_floor)
 
+    def test_fixed_transitions_keep_A_and_still_converge_monotonically(self):
+        rng = np.random.default_rng(5)
+        X = [rng.normal(-2, .3, (40, 1)), rng.normal(2, .4, (40, 1))]
+        free = toy_model().fit_baum_welch(X)
+        fixed = toy_model()
+        A = fixed.A.copy()
+        fixed.fit_baum_welch(X, update_transitions=False)
+        np.testing.assert_array_equal(fixed.A, A)
+        self.assertFalse(np.allclose(free.A, A))
+        self.assertTrue(fixed.converged_)
+        self.assertTrue((np.diff(fixed.history_) >= 0).all())
+        self.assertGreater(fixed.history_[-1], fixed.history_[0])
+
     def test_singletons_do_not_create_transitions_and_zero_occupancy(self):
         m = GaussianHMM(2, 1).set_parameters([1, 0], np.eye(2), [[0], [99]], [[1], [2]])
         m.fit_baum_welch([np.array([[2.]]), np.array([[2.]])])
