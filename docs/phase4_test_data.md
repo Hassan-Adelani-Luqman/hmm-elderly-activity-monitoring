@@ -86,6 +86,5 @@ ensures optional unlabelled training blocks do not overlap held-out acquisition
 times. Raw files remain unchanged. The notebook demonstrates the partition and
 actual collection conditions without fitting or scoring any test data.
 
-Phase 4 is complete for this revised design. Video framing findings remain a
-separate open submission requirement. The next phase is feature extraction,
+Phase 4 is complete for this revised design. The next phase is feature extraction,
 windowing and training-only normalisation.

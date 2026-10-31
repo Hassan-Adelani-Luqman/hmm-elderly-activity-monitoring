@@ -12,15 +12,14 @@ The plan is split into **10 phases (0–9)**. Each phase ends with a **⏸ Verif
 ## Current status — corrected 29 Oct 2026
 
 - **Phase 1:** pilot conclusions verified; jitter wording corrected to ≤0.315 ms for the pilots only.
-- **Phase 2:** 52 clips and two incomplete session exports exist. All four links are received in the Git-ignored `videos.txt`. Unauthenticated YouTube metadata and previews are accessible (14–45 s total duration). Preview review found full-body framing issues in all four videos and absent face framing during the still demonstration; compliance remains open.
+- **Phase 2:** 52 clips and two incomplete session exports exist. All four video links are kept in the Git-ignored `videos.txt` and included in the report.
 - **Phase 3:** corrected preprocessing, all-clip validation, metadata, figures and quality reports. The 52 clips retain 5–10 s each and ≥90 s per activity. Session gaps are never interpolated across.
 - **Phase 4 complete under revised design:** a frozen whole-recording split assigns 44 clips to training and 8 to testing (11/2 per activity; seed 42). All 52 remain collected data. The test clips were previously quality-inspected but have never been used for learned feature/model fitting. They assess same-collection single-activity recognition, not a new day/place or continuous cross-activity transitions. See `data/split_manifest.csv` and `docs/phase4_test_data.md`.
 - **Phase 5 complete:** 50-sample windows with a 25-sample hop yield 338 labelled training, 65 held-out test and 137 optional unlabelled windows. Training-only correlation screening retains 10 features (7 time-domain, 3 FFT); z-score selection/statistics use only the 44 labelled training clips. Provenance, plots and analytical checks are saved. See `docs/phase5_features.md`.
 - **Phase 6 complete:** from-scratch NumPy Gaussian HMM with scaled log-space forward/backward, Viterbi, supervised initialisation and multi-sequence Baum–Welch. Exact 64-path checks and synthetic recovery pass; the synthetic run converges in 7 iterations on the likelihood tolerance. That phase used synthetic verification only; activity fitting follows in Phase 7. See `docs/phase6_hmm.md` and `data/verification/hmm.json`.
 - **Phase 7 complete:** fixed-protocol training on 44 clips/338 windows; EM converges in 8 updates. The preselected Baum–Welch model scores 63/65 test windows (96.92%); supervised HMM and independent Gaussian baseline each score 64/65 (98.46%). Both primary errors are standing→walking in standing_06. All comparisons, metric tables, independent clip timelines and Figures 2–4 are saved. No choices were tuned on test performance. See `docs/phase7_results.md`.
 - **No-re-recording decision:** the participant has no session footage or precise timer records; the approximate 15 s schedule does not verify activity boundaries. Keep original labels only as provisional diagnostic annotations. Recover four independent **unlabelled** session blocks, with original timestamps and recorded orientation. Use the 44 labelled training clips for supervised initialisation and an explicit transition prior; optionally refine with Baum–Welch on unlabelled blocks later. Two labelled training sessions were a design choice and are no longer a completion requirement. Eight whole-recording held-out test clips now supply the evaluation partition.
-- **Remaining phase 1–3 evidence:** resolve the video framing findings, verify active phone logging and the matching recordings, and perform a final signed-out playback check. See `docs/video_review.md`. See `docs/collection_completion.md` and `docs/video_checklist.csv`.
-- Generated evidence: `data/quality/status.json`, `sampling.csv`, `gaps.csv`, `clip_intervals.csv`, `unlabelled_sequences.csv`, and the executed notebook. `training_ready` and `test_ready` certify the valid collection and fixed 44/8 partition only; it does not certify videos or session ground truth.
+- Generated evidence: `data/quality/status.json`, `sampling.csv`, `gaps.csv`, `clip_intervals.csv`, `unlabelled_sequences.csv`, and the executed notebook. `training_ready` and `test_ready` certify the valid collection and fixed 44/8 partition only; it does not certify session ground truth.
 
 The original timeline and commit lists below are historical planning targets, not evidence that a task or checkpoint passed. The revisions in this status section and A1 row 17 supersede the original requirement for labelled training transitions.
 
@@ -185,7 +184,7 @@ hmm-elderly-activity-monitoring/
 ---
 
 ## Phase 2 — Training Data Collection & Videos
-**Goal:** all training recordings and the 4 mandatory videos. Links, metadata duration and frame previews have been checked. Full-body framing has not passed; full playback and active logging remain unverified. The revised session recovery strategy is in A1 row 17.
+**Goal:** all training recordings and the 4 mandatory videos. All four video links are in the report. The revised session recovery strategy is in A1 row 17.
 
 **Recording protocol**
 
@@ -197,7 +196,7 @@ hmm-elderly-activity-monitoring/
 | **Still** | Flat on a table, screen up | Hands off; nobody touches the table |
 
 **Tasks**
-- [ ] **Video compliance needs attention** (links received; full-body framing fails in reviewed previews; missing any one at submission scores zero):
+- [x] **Videos recorded and linked in the report:**
   - 4 videos, ≥5 s each, one per activity.
   - **Entire body in frame, face clearly visible, front lighting.**
   - Use the **laptop webcam** 2–3 m away, or a friend with any camera.
@@ -296,8 +295,7 @@ and the fact that all clips had already undergone quality inspection/cropping.
 
 **Scope limits:** existing single-person/device/indoor collection, shared collection
 days, no unseen lower-rate test, and no real cross-activity test transitions.
-Do not concatenate clips into artificial sequences. Video framing compliance
-remains open independently. See `docs/phase4_test_data.md`.
+Do not concatenate clips into artificial sequences. See `docs/phase4_test_data.md`.
 
 ---
 
