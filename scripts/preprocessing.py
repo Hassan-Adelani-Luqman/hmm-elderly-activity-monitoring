@@ -3,7 +3,6 @@
 Run from any directory: python scripts/preprocessing.py [--require-complete]
 The strict option exits nonzero until all 52 clips pass their fixed 44/8 split. Unverified session
 blocks are exported separately without labels; they are never supervised truth.
-Videos are a separate, human-verified collection requirement.
 """
 
 from pathlib import Path
@@ -330,10 +329,8 @@ def build_dataset(root, output_dir=None):
     split_manifest = load_split_manifest(root)
     crop_path = root / "data/clip_intervals.csv"
     crops = pd.read_csv(crop_path).set_index("file")
-    review_path = root / "data/session_review.csv"
-    reviews = pd.read_csv(review_path, keep_default_na=False).set_index("file")
-    if not crops.index.is_unique or not reviews.index.is_unique:
-        raise ValueError("Duplicate crop or review entries")
+    if not crops.index.is_unique:
+        raise ValueError("Duplicate crop entries")
     prior_path = root / "data/metadata.csv"
     prior = pd.read_csv(prior_path).set_index("file") if prior_path.exists() else pd.DataFrame()
     records, quality, gaps, catalog, accepted, rejected, crop_log = [], [], [], [], [], [], []
@@ -372,10 +369,8 @@ def build_dataset(root, output_dir=None):
         if rec_type == "session":
             if not label_file.exists():
                 reasons.append("missing segment labels")
-            if name not in reviews.index or reviews.loc[name, "status"] != "verified":
-                reasons.append("activity timing and phone orientation not verified against recording evidence")
-            elif reviews.loc[name, "source_sha256"] != fingerprint or not reviews.loc[name, "evidence"].strip():
-                reasons.append("review fingerprint/evidence missing or stale")
+            # Only an approximate timer schedule exists, so sessions never become labelled data.
+            reasons.append("approximate session labels; exported only as unlabelled blocks")
         elif name not in crops.index or crops.loc[name, "source_sha256"] != fingerprint:
             reasons.append("crop interval missing or stale; inspect new recording")
         if not reasons:
@@ -464,8 +459,7 @@ def build_dataset(root, output_dir=None):
               "unlabelled_session_sequences": len(unlabelled),
               "verified_session_labels_available": n_sessions > 0,
               "training_strategy": "44 labelled training clips; 8 held-out clips excluded from fitting/tuning; explicit transition prior; optional independent unlabelled training blocks for EM",
-              "evaluation_scope": "Previously inspected same-collection clips; no claim of unseen-day/environment or cross-activity transition generalisation",
-              "video_verification": "External evidence required; not certified by this pipeline"}
+              "evaluation_scope": "Previously inspected same-collection clips; no claim of unseen-day/environment or cross-activity transition generalisation"}
     pd.DataFrame(catalog).to_csv(prior_path, index=False, float_format="%.6f")
     pd.DataFrame(quality).to_csv(quality_dir / "sampling.csv", index=False)
     pd.DataFrame(gaps, columns=["recording", "sensor", "start_s", "end_s", "gap_s"]).to_csv(quality_dir / "gaps.csv", index=False)

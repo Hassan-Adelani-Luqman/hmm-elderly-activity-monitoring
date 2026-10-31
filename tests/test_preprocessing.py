@@ -188,8 +188,6 @@ class PreprocessingTests(unittest.TestCase):
                            "source_sha256": recording_fingerprint(paths[0])}]).to_csv(root / "data/clip_intervals.csv", index=False)
             pd.DataFrame([{"file": "standing_01", "activity": "standing", "split": "train",
                            "source_sha256": recording_fingerprint(paths[0])}]).to_csv(root / "data/split_manifest.csv", index=False)
-            pd.DataFrame([{"file": "train_session_01", "status": "pending", "source_sha256": "",
-                           "evidence": ""}]).to_csv(root / "data/session_review.csv", index=False)
             stale = root / "data/processed/train/sessions/train_session_01.csv"
             stale.parent.mkdir(parents=True)
             stale.write_text("activity\nwalking\n")

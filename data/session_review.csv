@@ -1,3 +1,0 @@
-file,status,source_sha256,evidence,notes
-train_session_01,pending,b312a0dfe5867aa2c8c11c198b659e8be0268e1e7ce3f8fe6a26fd283657bc6b,,No timing footage/log remains; rough 15 s schedule only. Labels remain unverified. Recover independent unlabelled blocks; retain changed grip.
-train_session_02,pending,a8025e027a2daae4829533ad9a0ef9b523c2686d11f4d198f89b5e6cadf34928,,87.5 s outage; no segment labels. Recover surviving continuous block without labels; discard short tail.

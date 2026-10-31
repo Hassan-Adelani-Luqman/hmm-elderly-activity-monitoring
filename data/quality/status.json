@@ -15,6 +15,5 @@
   "unlabelled_session_sequences": 4,
   "verified_session_labels_available": false,
   "training_strategy": "44 labelled training clips; 8 held-out clips excluded from fitting/tuning; explicit transition prior; optional independent unlabelled training blocks for EM",
-  "evaluation_scope": "Previously inspected same-collection clips; no claim of unseen-day/environment or cross-activity transition generalisation",
-  "video_verification": "External evidence required; not certified by this pipeline"
+  "evaluation_scope": "Previously inspected same-collection clips; no claim of unseen-day/environment or cross-activity transition generalisation"
 }

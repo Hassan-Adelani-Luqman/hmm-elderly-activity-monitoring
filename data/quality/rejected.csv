@@ -1,3 +1,3 @@
 recording,type,reason,source_sha256
-train_session_01,session,acc: 2 large gaps (max 6.544s); gyro: 2 large gaps (max 6.561s); activity timing and phone orientation not verified against recording evidence,b312a0dfe5867aa2c8c11c198b659e8be0268e1e7ce3f8fe6a26fd283657bc6b
-train_session_02,session,acc: 2 large gaps (max 87.533s); gyro: 2 large gaps (max 87.516s); missing segment labels; activity timing and phone orientation not verified against recording evidence,a8025e027a2daae4829533ad9a0ef9b523c2686d11f4d198f89b5e6cadf34928
+train_session_01,session,acc: 2 large gaps (max 6.544s); gyro: 2 large gaps (max 6.561s); approximate session labels; exported only as unlabelled blocks,b312a0dfe5867aa2c8c11c198b659e8be0268e1e7ce3f8fe6a26fd283657bc6b
+train_session_02,session,acc: 2 large gaps (max 87.533s); gyro: 2 large gaps (max 87.516s); missing segment labels; approximate session labels; exported only as unlabelled blocks,a8025e027a2daae4829533ad9a0ef9b523c2686d11f4d198f89b5e6cadf34928
