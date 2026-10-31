@@ -96,6 +96,11 @@ class SeparationTests(unittest.TestCase):
             self.assertFalse(result['protocol']['include_unlabelled'])
             self.assertTrue(result['models']['baum_welch']['converged'])
             np.testing.assert_array_equal(np.array(result['supervised_counts']['transitions']), np.diag([88,77,69,60]))
+            # Single-activity clips carry no transition evidence: EM must keep the prior A.
+            models = result['models']
+            np.testing.assert_array_equal(models['baum_welch']['parameters']['A'],
+                                          models['supervised']['parameters']['A'])
+            self.assertTrue((np.array(models['baum_welch']['parameters']['A']) > 0).all())
 
     def test_evaluation_cannot_fit_or_remap_and_test_labels_do_not_change_predictions(self):
         frozen = load_models(ROOT)

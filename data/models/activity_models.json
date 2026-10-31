@@ -4,6 +4,7 @@
     "models": [
       "supervised",
       "baum_welch",
+      "baum_welch_free_transitions",
       "gaussian_baseline"
     ],
     "n_states": 4,
@@ -12,6 +13,8 @@
     "max_iter": 500,
     "transition_pseudocount": 1.0,
     "initial_pseudocount": 1.0,
+    "em_update_transitions": false,
+    "transition_policy": "Every labelled training clip contains one activity, so it carries no evidence about activity changes. Free EM drives every unobserved transition to exactly zero, making still and jumping absorbing. EM therefore keeps the supervised Laplace transition prior fixed and re-estimates pi and the Gaussian emissions only. Decided from the fitted parameters, not from test metrics. The free-transition EM model is kept as a comparison only",
     "training_split": "train",
     "include_unlabelled": false,
     "unlabelled_policy": "Excluded a priori: unverified boundaries and changed grip; no auxiliary variant selected using test results",
@@ -134,9 +137,9 @@
   "feature_transform_sha256": "4f87fc1a030e3b401ee78cd73791e07a07d4a22ac5fe5b5c7db39ef36245c39c",
   "split_manifest_sha256": "a3617ba315b5ee8e7cb87f86351ee16d0a6544b7198205bccae5fa6ba4b88580",
   "source_sha256": {
-    "hmm.py": "333de3ed6447d641e88e1e1cac9e88d826180e9c99efb33fc6032e50d3eb7811",
+    "hmm.py": "e20a584dc834a2790a43afbf1d0a5c8b6ae71361cd8961fccac8f4fd64896c88",
     "features.py": "23c62fbe8146e1c85762454b4a67262d3bf2946a2fe5cf5209be71a1c728e16d",
-    "train_activity.py": "3013814d6d7a18cbaa022c8a21cef6e170438ae528cc592bac98ec5fc53a5573"
+    "train_activity.py": "8824f77e0e6a342e2c6af9be24b0e3a6d72aab721b87211b2bb928221cbe0e51"
   },
   "supervised_counts": {
     "starts": [
@@ -385,6 +388,227 @@
       "parameters": {
         "pi": [
           0.25,
+          0.2499952728431622,
+          0.25000472715683786,
+          0.25
+        ],
+        "A": [
+          [
+            0.967391304347826,
+            0.010869565217391304,
+            0.010869565217391304,
+            0.010869565217391304
+          ],
+          [
+            0.012345679012345678,
+            0.9629629629629629,
+            0.012345679012345678,
+            0.012345679012345678
+          ],
+          [
+            0.0136986301369863,
+            0.0136986301369863,
+            0.958904109589041,
+            0.0136986301369863
+          ],
+          [
+            0.015625,
+            0.015625,
+            0.015625,
+            0.953125
+          ]
+        ],
+        "means": [
+          [
+            -0.2824451959767056,
+            -1.5475214017854295,
+            -0.5718936466760102,
+            -0.3780404004358075,
+            -0.9112168689634648,
+            -0.7645707181502058,
+            -0.7584838499595769,
+            0.3087209805712164,
+            -0.4775542527901419,
+            0.7107104142413581
+          ],
+          [
+            0.06711254636313933,
+            0.6515084632932435,
+            -0.5499783538149271,
+            -0.3715936208580185,
+            -0.19397319079902306,
+            -0.6288363404020586,
+            -0.3903670599464982,
+            0.5592725879026192,
+            -0.5458311496936837,
+            0.49214576381099756
+          ],
+          [
+            -0.40312200360237355,
+            0.6753000038661932,
+            -0.3953888026490877,
+            0.3143060361959092,
+            -0.21076192382249062,
+            0.20136603057542338,
+            -0.07056680560393873,
+            -0.4764295099041657,
+            0.020229382376243492,
+            0.042650676071214554
+          ],
+          [
+            0.7775592581554781,
+            0.58876477259864,
+            1.9204301426986703,
+            0.615040178696757,
+            1.7489186627716282,
+            1.596204070970055,
+            1.6123231073302753,
+            -0.5588876504115328,
+            1.3043425573668248,
+            -1.6369037169503828
+          ]
+        ],
+        "variances": [
+          [
+            0.04276618833669285,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.24838003443269277,
+            1.5033994633378296,
+            0.1430424301768594,
+            0.3268560953296443
+          ],
+          [
+            0.9985300776012523,
+            0.001,
+            0.001,
+            0.001,
+            0.02757101888078102,
+            0.003293962765631679,
+            0.38636261756758816,
+            0.8532717227429139,
+            0.020502995465891984,
+            0.15242003780341706
+          ],
+          [
+            0.6935507564869706,
+            0.001,
+            0.00500924993811989,
+            3.277971812470428,
+            0.01901209171064619,
+            0.581296853166987,
+            0.2817536656231196,
+            0.45872476217488295,
+            0.7082195290452925,
+            0.3413815726046418
+          ],
+          [
+            1.7812929253458558,
+            0.03236204826083388,
+            0.06348892271195286,
+            0.11963311105521988,
+            0.3918055253048046,
+            0.1967037827439218,
+            0.028443405462782723,
+            0.014098046954051452,
+            1.3381419038380888,
+            0.046611966716887845
+          ]
+        ]
+      },
+      "state_to_label": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "mapping_train_confusion": [
+        [
+          99,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          86,
+          2,
+          0
+        ],
+        [
+          0,
+          0,
+          80,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          71
+        ]
+      ],
+      "mapping_training_correct": 336,
+      "training_log_likelihood": 664.0951467987168,
+      "history": [
+        654.8176341522002,
+        660.6149537968687,
+        661.360948035849,
+        661.6478636820107,
+        662.6244341371222,
+        664.0414810929259,
+        664.0951456228145,
+        664.0951467987168
+      ],
+      "invariant_history": [
+        {
+          "pi_sum_error": 0.0,
+          "A_row_sum_error": 0.0,
+          "minimum_variance": 0.001
+        },
+        {
+          "pi_sum_error": 0.0,
+          "A_row_sum_error": 0.0,
+          "minimum_variance": 0.001
+        },
+        {
+          "pi_sum_error": 0.0,
+          "A_row_sum_error": 0.0,
+          "minimum_variance": 0.001
+        },
+        {
+          "pi_sum_error": 0.0,
+          "A_row_sum_error": 0.0,
+          "minimum_variance": 0.001
+        },
+        {
+          "pi_sum_error": 0.0,
+          "A_row_sum_error": 0.0,
+          "minimum_variance": 0.001
+        },
+        {
+          "pi_sum_error": 0.0,
+          "A_row_sum_error": 0.0,
+          "minimum_variance": 0.001
+        },
+        {
+          "pi_sum_error": 0.0,
+          "A_row_sum_error": 0.0,
+          "minimum_variance": 0.001
+        }
+      ],
+      "converged": true,
+      "stop_reason": "likelihood_tolerance",
+      "iterations": 7,
+      "update_transitions": false
+    },
+    "baum_welch_free_transitions": {
+      "parameters": {
+        "pi": [
+          0.25,
           0.24999727343818742,
           0.25000272656181255,
           0.25
@@ -605,7 +829,8 @@
       ],
       "converged": true,
       "stop_reason": "likelihood_tolerance",
-      "iterations": 8
+      "iterations": 8,
+      "update_transitions": true
     }
   }
 }

@@ -16,9 +16,16 @@ else:
 
 PROTOCOL = {
     "primary_model": "baum_welch",
-    "models": ["supervised", "baum_welch", "gaussian_baseline"],
+    "models": ["supervised", "baum_welch", "baum_welch_free_transitions", "gaussian_baseline"],
     "n_states": 4, "var_floor": 1e-3, "tol": 1e-4, "max_iter": 500,
     "transition_pseudocount": 1.0, "initial_pseudocount": 1.0,
+    "em_update_transitions": False,
+    "transition_policy": "Every labelled training clip contains one activity, so it carries no evidence about "
+                         "activity changes. Free EM drives every unobserved transition to exactly zero, making "
+                         "still and jumping absorbing. EM therefore keeps the supervised Laplace transition "
+                         "prior fixed and re-estimates pi and the Gaussian emissions only. Decided from the "
+                         "fitted parameters, not from test metrics. The free-transition EM model is kept "
+                         "as a comparison only",
     "training_split": "train", "include_unlabelled": False,
     "unlabelled_policy": "Excluded a priori: unverified boundaries and changed grip; no auxiliary variant selected using test results",
     "mapping_policy": "Hungarian matching on labelled-training Viterbi predictions only",
@@ -85,17 +92,21 @@ def train_models(root):
     supervised.fit_supervised(X, y, transition_prior=PROTOCOL['transition_pseudocount'],
                               initial_prior=PROTOCOL['initial_pseudocount'])
     refined = model_from_parameters({'parameters': parameters(supervised)})
-    refined.fit_baum_welch(X)
+    refined.fit_baum_welch(X, update_transitions=PROTOCOL['em_update_transitions'])
+    free = model_from_parameters({'parameters': parameters(supervised)})
+    free.fit_baum_welch(X, update_transitions=True)
     models = {}
-    for name, model in [('supervised', supervised), ('baum_welch', refined)]:
+    for name, model in [('supervised', supervised), ('baum_welch', refined), ('baum_welch_free_transitions', free)]:
         predictions = [model.predict_viterbi(s) for s in X]
         mapping, counts = state_mapping(y, predictions, model.n_states)
         models[name] = {'parameters': parameters(model), 'state_to_label': mapping.tolist(),
                         'mapping_train_confusion': counts.tolist(),
                         'mapping_training_correct': int(counts[mapping, np.arange(model.n_states)].sum()),
                         'training_log_likelihood': model.score(X)}
-    models['baum_welch'].update(history=refined.history_, invariant_history=refined.invariant_history_,
-                                converged=refined.converged_, stop_reason=refined.stop_reason_, iterations=refined.n_iter_)
+    for name, model in [('baum_welch', refined), ('baum_welch_free_transitions', free)]:
+        models[name].update(history=model.history_, invariant_history=model.invariant_history_,
+                            converged=model.converged_, stop_reason=model.stop_reason_, iterations=model.n_iter_,
+                            update_transitions=model.update_transitions_)
     result = {'protocol': PROTOCOL, 'state_order': config['state_order'], 'feature_order': config['feature_order'],
               'fit_sequences': [s['name'] for s in train], 'fit_windows': sum(len(s['X']) for s in train),
               'training_feature_sha256': {s['name']: file_hash(root/'data/features/train'/f"{s['name']}.csv") for s in train},

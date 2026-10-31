@@ -19,6 +19,16 @@ baum_welch,test,standing,18,16.0,2.0,0.0,47.0,0.8888888888888888,1.0,0.969230769
 baum_welch,test,walking,18,18.0,0.0,2.0,45.0,1.0,0.9574468085106383,0.9692307692307692
 baum_welch,test,jumping,11,11.0,0.0,0.0,54.0,1.0,1.0,1.0
 baum_welch,test,Overall,65,,,,,0.9722222222222222,0.9893617021276596,0.9692307692307692
+baum_welch_free_transitions,train,still,99,99.0,0.0,0.0,239.0,1.0,1.0,1.0
+baum_welch_free_transitions,train,standing,88,86.0,2.0,0.0,250.0,0.9772727272727273,1.0,0.9940828402366864
+baum_welch_free_transitions,train,walking,80,80.0,0.0,2.0,256.0,1.0,0.9922480620155039,0.9940828402366864
+baum_welch_free_transitions,train,jumping,71,71.0,0.0,0.0,267.0,1.0,1.0,1.0
+baum_welch_free_transitions,train,Overall,338,,,,,0.9943181818181819,0.998062015503876,0.9940828402366864
+baum_welch_free_transitions,test,still,18,18.0,0.0,0.0,47.0,1.0,1.0,1.0
+baum_welch_free_transitions,test,standing,18,16.0,2.0,0.0,47.0,0.8888888888888888,1.0,0.9692307692307692
+baum_welch_free_transitions,test,walking,18,18.0,0.0,2.0,45.0,1.0,0.9574468085106383,0.9692307692307692
+baum_welch_free_transitions,test,jumping,11,11.0,0.0,0.0,54.0,1.0,1.0,1.0
+baum_welch_free_transitions,test,Overall,65,,,,,0.9722222222222222,0.9893617021276596,0.9692307692307692
 gaussian_baseline,train,still,99,99.0,0.0,0.0,239.0,1.0,1.0,1.0
 gaussian_baseline,train,standing,88,87.0,1.0,1.0,249.0,0.9886363636363636,0.996,0.9940828402366864
 gaussian_baseline,train,walking,80,79.0,1.0,1.0,257.0,0.9875,0.9961240310077519,0.9940828402366864

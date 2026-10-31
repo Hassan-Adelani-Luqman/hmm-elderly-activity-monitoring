@@ -1,6 +1,6 @@
 {
   "primary_model": "baum_welch",
-  "model_artifact_sha256": "71c343b8d09c1763a665b2b6ceb9dc49edf32d219e94f7a793e80c021259adf1",
+  "model_artifact_sha256": "09ab389c9952ee3a138a63be96769bedb0fb40da1e3559ea0ededb8467775931",
   "evaluation_source_sha256": "5edf5c4bfbc9736c49d520713aeccef29441e134002cf49ef1b0a7a59193883e",
   "state_order": [
     "still",
