@@ -41,7 +41,6 @@ data/
 figures/        Figures exported from the notebook
 report/         Final report (.docx and .pdf) and its configuration
 tests/          Numerical, data-integrity and notebook-sync regression tests
-docs/           Phase notes and data-collection records
 ```
 
 Processed CSVs use the schema `timestamp_ns, seconds_elapsed, acc_x, acc_y, acc_z, gyro_x, gyro_y, gyro_z, activity` (unlabelled blocks omit `activity`). `timestamp_ns` is Unix epoch nanoseconds; `seconds_elapsed` counts from the original recording start; consecutive rows are exactly 40 ms apart.
