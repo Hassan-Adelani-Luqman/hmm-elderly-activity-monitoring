@@ -104,16 +104,16 @@ def build_report(video_links):
     sec.top_margin = sec.bottom_margin = Inches(.6)
     sec.left_margin = sec.right_margin = Inches(.7)
     sec.header_distance = sec.footer_distance = Inches(.25)
-    normal = doc.styles['Normal']; normal.font.name = 'Liberation Sans'; normal.font.size = Pt(10)
+    normal = doc.styles['Normal']; normal.font.name = 'Arial'; normal.font.size = Pt(10)
     normal.paragraph_format.line_spacing = 1.03
     normal.paragraph_format.space_after = Pt(5)
     for name, size in [('Title', 18), ('Heading 1', 13), ('Heading 2', 11)]:
-        style = doc.styles[name]; style.font.name = 'Liberation Sans'; style.font.size = Pt(size)
+        style = doc.styles[name]; style.font.name = 'Arial'; style.font.size = Pt(size)
         style.font.color.rgb = RGBColor.from_string(NAVY)
         style.paragraph_format.space_before = Pt(7 if name != 'Title' else 0)
         style.paragraph_format.space_after = Pt(4)
         style.paragraph_format.keep_with_next = True
-    doc.styles['Caption'].font.name = 'Liberation Sans'
+    doc.styles['Caption'].font.name = 'Arial'
     doc.styles['Caption'].font.size = Pt(8.5)
     doc.styles['Caption'].font.bold = False
     doc.styles['Caption'].font.color.rgb = RGBColor.from_string('404040')
